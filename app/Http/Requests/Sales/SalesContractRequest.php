@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Sales\Data\SalesContractData;
@@ -9,6 +10,7 @@ use App\Domain\Sales\Enums\ContractType;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Sales\Models\SalesContract;
 use App\Domain\Sales\Services\ContractPricing;
+use App\Domain\Users\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -118,7 +120,7 @@ class SalesContractRequest extends FormRequest
             if ((int) $item['quantity'] > $available) {
                 $validator->errors()->add(
                     "items.{$index}.quantity",
-                    "الكمية المتاحة في المصدر المختار {$available} فقط.",
+                    "الكمية المتاحة في {$this->sourceLabel()} {$available} فقط.",
                 );
             }
         }
@@ -133,6 +135,16 @@ class SalesContractRequest extends FormRequest
                 ->available((int) $this->input('installer_id'), $productId),
             default => app(StockService::class)
                 ->available($productId, (int) $this->input('warehouse_id')),
+        };
+    }
+
+    /** اسم المصدر الفعلي (مخزن أو موظف) — يُستخدم لتوضيح رسائل الكمية المتاحة */
+    private function sourceLabel(): string
+    {
+        return match ($this->input('stock_source')) {
+            StockSource::SalesRep->value => User::query()->whereKey($this->input('sales_rep_id'))->value('name') ?? 'مندوب المبيعات',
+            StockSource::Installer->value => User::query()->whereKey($this->input('installer_id'))->value('name') ?? 'فني التركيب',
+            default => Warehouse::query()->whereKey($this->input('warehouse_id'))->value('name') ?? 'المخزن',
         };
     }
 
