@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Eduplex Dashboard</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <style data-purpose="custom-styles">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #B494F7;
+            /* Main purple background */
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .brand-green {
+            background-color: #D4FF5B;
+            color: #1A1A1A;
+        }
+
+        .text-brand-green {
+            color: #D4FF5B;
+        }
+
+        .bg-dark-sidebar {
+            background-color: #1A1A1A;
+        }
+
+        .nav-item-active {
+            background-color: #D4FF5B;
+            color: #1A1A1A;
+        }
+
+        .nav-item-active i {
+            color: #1A1A1A;
+        }
+
+        .nav-item:hover:not(.nav-item-active) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .circular-chart {
+            display: block;
+            margin: 0 auto;
+            max-width: 80%;
+            max-height: 250px;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: #eee;
+            stroke-width: 3.8;
+        }
+
+        .circle {
+            fill: none;
+            stroke-width: 3.8;
+            stroke-linecap: round;
+            animation: progress 1s ease-out forwards;
+        }
+
+        @keyframes progress {
+            0% {
+                stroke-dasharray: 0 100;
+            }
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            green: '#D4FF5B',
+                            dark: '#1A1A1A',
+                            light: '#F8F9FA',
+                            purple: '#B494F7'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-8">
+    <!-- BEGIN: Main Dashboard Container -->
+    <div class="bg-white rounded-[2rem] w-full max-w-[1200px] h-[800px] flex overflow-hidden shadow-2xl relative">
+        <!-- BEGIN: Sidebar -->
+        <aside class="w-64 bg-brand-dark flex flex-col justify-between py-8 px-6 text-white rounded-l-[2rem]">
+            <div>
+                <!-- Logo -->
+                <div class="flex items-center gap-3 mb-10 pl-2">
+                    <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
+                        <i class="fa-solid fa-graduation-cap text-brand-dark text-lg"></i>
+                    </div>
+                    <span class="text-2xl font-semibold tracking-wide">Eduplex</span>
+                </div>
+                <!-- Navigation Links -->
+                <nav class="space-y-2">
+                    <a class="nav-item-active nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium transition-colors"
+                        href="#">
+                        <i class="fa-solid fa-border-all w-5"></i>
+                        Dashboard
+                    </a>
+                    <a class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <i class="fa-solid fa-book-open w-5"></i>
+                        My Courses
+                    </a>
+                    <a class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <i class="fa-solid fa-users w-5"></i>
+                        My Classes
+                    </a>
+                    <a class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <i class="fa-regular fa-comment-dots w-5"></i>
+                        Messages
+                    </a>
+                    <div class="h-6"></div> <!-- Spacer -->
+                    <a class="nav-item flex items-center justify-between px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <div class="flex items-center gap-4">
+                            <i class="fa-regular fa-bell w-5"></i>
+                            Notifications
+                        </div>
+                        <span class="bg-[#FF9B9B] text-white text-xs font-bold px-2 py-0.5 rounded-full">2</span>
+                    </a>
+                    <a class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <i class="fa-regular fa-calendar w-5"></i>
+                        Calendars
+                    </a>
+                    <a class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <i class="fa-solid fa-user-group w-5"></i>
+                        Community
+                    </a>
+                    <div class="h-6"></div> <!-- Spacer -->
+                    <a class="nav-item flex items-center gap-4 px-4 py-3 rounded-xl font-medium text-gray-400 transition-colors"
+                        href="#">
+                        <i class="fa-solid fa-gear w-5"></i>
+                        Settings
+                    </a>
+                </nav>
+            </div>
+            <!-- Download App Widget -->
+            <div class="brand-green rounded-2xl p-4 relative mt-8">
+                <button
+                    class="absolute -top-3 right-4 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-md text-brand-dark hover:bg-gray-50 transition-colors">
+                    <i class="fa-solid fa-arrow-up-right"></i>
+                </button>
+                <div class="mb-4">
+                    <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
+                </div>
+                <p class="font-semibold text-sm leading-tight pr-8">Download our<br />mobile app</p>
+            </div>
+        </aside>
+        <!-- END: Sidebar -->
+        <!-- BEGIN: Main Content Area -->
+        <main class="flex-1 bg-[#FAFAFA] flex flex-col overflow-y-auto">
+            <!-- BEGIN: Header -->
+            <header class="flex items-center justify-between px-8 py-6 bg-white sticky top-0 z-10">
+                <h1 class="text-2xl font-bold text-gray-800">Welcome back Taylor 👋</h1>
+                <div class="flex items-center gap-6">
+                    <!-- Search -->
+                    <div class="relative">
+                        <i
+                            class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input
+                            class="pl-10 pr-4 py-2.5 rounded-full bg-gray-50 border-none text-sm w-64 focus:ring-2 focus:ring-brand-green/50 outline-none transition-shadow placeholder:text-gray-400"
+                            placeholder="Search courses" type="text" />
+                    </div>
+                    <!-- Profile -->
+                    <img alt="User Profile"
+                        class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm cursor-pointer"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuBL-ye_J1-8JGiJfqs9HFSM3CyzjHsCncffaFDvHMckyNMXVxf2KyQbV_0gfKfxpa8ZoZE08tEjh8w88q3tsPUNRS03eJeThe6E8x1mx-FDfj6HaR3tc3YR-Ij40UplKWUDqzpbn16S0hzLbKKQbYAUFUpofm_ioJ4Tlcnt5rSBOfss_vVh0wpVnxVp4PSzlFClxLgdjJHar04KOvT1APZTKH3RtJbzSFW1MljtP_isgy5tSjkiw3lb" />
+                </div>
+            </header>
+            <!-- END: Header -->
+            <div class="p-8 flex-1 grid grid-cols-12 gap-6">
+                <!-- Left/Main Column (spans 8 cols) -->
+                <div class="col-span-8 flex flex-col gap-6">
+                    <!-- BEGIN: New Courses Section -->
+                    <section>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-gray-800">New Courses</h2>
+                            <a class="text-sm text-gray-500 hover:text-gray-800 font-medium underline underline-offset-4 decoration-gray-300"
+                                href="#">View All</a>
+                        </div>
+                        <div class="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+                            <!-- Course Card 1 -->
+                            <div
+                                class="min-w-[220px] bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-shrink-0">
+                                <div class="flex items-start gap-3 mb-4">
+                                    <div
+                                        class="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-500">
+                                        <i class="fa-solid fa-pen-nib"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-800 text-sm">Content Writing</h3>
+                                        <p class="text-xs text-gray-500">12 Lessons</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Rate</p>
+                                        <div class="flex items-center gap-1">
+                                            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                                            <span class="font-semibold text-sm">4.8</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1 text-right">
+                                            Type</p>
+                                        <span class="font-semibold text-sm text-gray-700">Data Research</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Course Card 2 -->
+                            <div
+                                class="min-w-[220px] bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-shrink-0">
+                                <div class="flex items-start gap-3 mb-4">
+                                    <div
+                                        class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-500">
+                                        <i class="fa-solid fa-laptop-code"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-800 text-sm">Usability Testing</h3>
+                                        <p class="text-xs text-gray-500">15 Lessons</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Rate</p>
+                                        <div class="flex items-center gap-1">
+                                            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                                            <span class="font-semibold text-sm">5.0</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1 text-right">
+                                            Type</p>
+                                        <span class="font-semibold text-sm text-gray-700">UI/UX Design</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Course Card 3 -->
+                            <div
+                                class="min-w-[220px] bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex-shrink-0">
+                                <div class="flex items-start gap-3 mb-4">
+                                    <div
+                                        class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-500">
+                                        <i class="fa-solid fa-camera"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-semibold text-gray-800 text-sm">Photography</h3>
+                                        <p class="text-xs text-gray-500">8 Lessons</p>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-end">
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Rate</p>
+                                        <div class="flex items-center gap-1">
+                                            <i class="fa-solid fa-star text-yellow-400 text-xs"></i>
+                                            <span class="font-semibold text-sm">4.6</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1 text-right">
+                                            Type</p>
+                                        <span class="font-semibold text-sm text-gray-700">Art and Design</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- END: New Courses Section -->
+                    <div class="flex gap-6 h-[260px]">
+                        <!-- BEGIN: Hours Activity Chart -->
+                        <section
+                            class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-1 flex flex-col relative">
+                            <div class="flex justify-between items-center mb-2">
+                                <h2 class="text-lg font-bold text-gray-800">Hours Activity</h2>
+                                <button
+                                    class="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-gray-100">
+                                    Weekly <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                                </button>
+                            </div>
+                            <p class="text-xs text-green-500 font-medium mb-4 flex items-center gap-1">
+                                <i class="fa-solid fa-arrow-trend-up"></i> +3% Increase than last week
+                            </p>
+                            <div class="flex-1 w-full relative">
+                                <canvas id="activityChart"></canvas>
+                            </div>
+                        </section>
+                        <!-- END: Hours Activity Chart -->
+                        <!-- BEGIN: Daily Schedule -->
+                        <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 w-64 flex flex-col">
+                            <h2 class="text-lg font-bold text-gray-800 mb-4">Daily Schedule</h2>
+                            <div class="flex flex-col gap-4 overflow-y-auto pr-2 scrollbar-hide">
+                                <!-- Schedule Item 1 -->
+                                <div class="flex items-center justify-between group cursor-pointer">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-xl bg-orange-100 text-orange-500 flex items-center justify-center">
+                                            <i class="fa-solid fa-table-cells-large"></i>
+                                        </div>
+                                        <div>
+                                            <h4
+                                                class="font-semibold text-sm text-gray-800 group-hover:text-brand-dark transition-colors">
+                                                Design System</h4>
+                                            <p class="text-xs text-gray-400">Lecture-Class</p>
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                </div>
+                                <!-- Schedule Item 2 -->
+                                <div class="flex items-center justify-between group cursor-pointer">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-xl bg-blue-100 text-blue-500 flex items-center justify-center">
+                                            <i class="fa-solid fa-font"></i>
+                                        </div>
+                                        <div>
+                                            <h4
+                                                class="font-semibold text-sm text-gray-800 group-hover:text-brand-dark transition-colors">
+                                                Typography</h4>
+                                            <p class="text-xs text-gray-400">Group-Test</p>
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                </div>
+                                <!-- Schedule Item 3 -->
+                                <div class="flex items-center justify-between group cursor-pointer">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-xl bg-green-100 text-green-500 flex items-center justify-center">
+                                            <i class="fa-solid fa-palette"></i>
+                                        </div>
+                                        <div>
+                                            <h4
+                                                class="font-semibold text-sm text-gray-800 group-hover:text-brand-dark transition-colors">
+                                                Color Style</h4>
+                                            <p class="text-xs text-gray-400">Group-Test</p>
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                </div>
+                                <!-- Schedule Item 4 -->
+                                <div class="flex items-center justify-between group cursor-pointer">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="w-10 h-10 rounded-xl bg-yellow-100 text-yellow-600 flex items-center justify-center">
+                                            <i class="fa-solid fa-object-group"></i>
+                                        </div>
+                                        <div>
+                                            <h4
+                                                class="font-semibold text-sm text-gray-800 group-hover:text-brand-dark transition-colors">
+                                                Visual Design</h4>
+                                            <p class="text-xs text-gray-400">Lecture-Test</p>
+                                        </div>
+                                    </div>
+                                    <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                                </div>
+                            </div>
+                        </section>
+                        <!-- END: Daily Schedule -->
+                    </div>
+                    <!-- BEGIN: Course You're Taking -->
+                    <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-gray-800">Course You're Taking</h2>
+                            <button
+                                class="text-xs font-medium text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-gray-100">
+                                Active <i class="fa-solid fa-chevron-down text-[10px]"></i>
+                            </button>
+                        </div>
+                        <div class="flex flex-col gap-3">
+                            <!-- Course Row 1 -->
+                            <div
+                                class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                <div class="flex items-center gap-4 w-1/3">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl">
+                                        <i class="fa-brands fa-figma"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-sm text-gray-800">3D Design Course</h4>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <img alt="Instructor" class="w-4 h-4 rounded-full"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDb_lyTer43PTVVQ3aGyum4VC6CjTbe9NGMJvrUpfygCjLhyx_xGD7v5srLWMegmtJHBZjWUR94qns70r2DfY_s0GvupsVKi78BXKG01lOcTijuV6in77K0w_7NyTKLeBwXHJ_0IKB0h4SLugI4RhxvSCS323Mlt5Zc6p4dHQVhRDf4gxWaWfPjYsllj6wa-yh6MUMQMdXRX_GrH87_JTjJN3Y1omfLUHREe2Td-vUk6m4ZN-ji6LaN" />
+                                            <span class="text-xs text-gray-500">Michaell Andrew</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-1/3 text-center">
+                                    <p class="text-xs text-gray-400 mb-1">Remaining</p>
+                                    <p class="font-semibold text-sm text-gray-700">8h 45 min</p>
+                                </div>
+                                <div class="w-1/3 flex justify-end items-center gap-3">
+                                    <div class="w-10 h-10 relative">
+                                        <svg class="circular-chart text-green-500" viewbox="0 0 36 36">
+                                            <path class="circle-bg" d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                            <path class="circle" d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831" stroke="currentColor" stroke-dasharray="45, 100"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="font-bold text-sm text-gray-800 w-8">45%</span>
+                                </div>
+                            </div>
+                            <!-- Course Row 2 -->
+                            <div
+                                class="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                                <div class="flex items-center gap-4 w-1/3">
+                                    <div
+                                        class="w-12 h-12 rounded-xl bg-red-100 text-red-500 flex items-center justify-center text-xl">
+                                        <i class="fa-brands fa-html5"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-sm text-gray-800">Development Basics</h4>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <img alt="Instructor" class="w-4 h-4 rounded-full"
+                                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW6Lg9ZioNzDxHscYScgQ_yc74jDM2C3MYgrOLGd6QDUploDlvX_-I01IAfvxm6neNrSyV8pbZyf7Q_J1WOd81fWJAveVlyO7eCYGnHUYiTPK_-ThmV30r6Lr5pdvl8Bb1E-ZEaS4-MrQniWst6WnEojfEvhWcAJ5ThRz6VR7L4hGKGGyl6u4oP-R_T7IdfGzQDTqA1-SCTORBbxkT0_RAO-ewmGZIdfA6se6QSz2LNqRjD8GXKHJZ" />
+                                            <span class="text-xs text-gray-500">Natalia Vaman</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-1/3 text-center">
+                                    <p class="text-xs text-gray-400 mb-1">Remaining</p>
+                                    <p class="font-semibold text-sm text-gray-700">10h 12 min</p>
+                                </div>
+                                <div class="w-1/3 flex justify-end items-center gap-3">
+                                    <div class="w-10 h-10 relative">
+                                        <svg class="circular-chart text-green-500" viewbox="0 0 36 36">
+                                            <path class="circle-bg" d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831"></path>
+                                            <path class="circle" d="M18 2.0845
+                            a 15.9155 15.9155 0 0 1 0 31.831
+                            a 15.9155 15.9155 0 0 1 0 -31.831" stroke="currentColor" stroke-dasharray="75, 100"></path>
+                                        </svg>
+                                    </div>
+                                    <span class="font-bold text-sm text-gray-800 w-8">75%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- END: Course You're Taking -->
+                </div>
+                <!-- Right Column (spans 4 cols) -->
+                <div class="col-span-4 flex flex-col gap-6">
+                    <!-- BEGIN: Premium Banner -->
+                    <section class="bg-brand-dark rounded-2xl p-6 text-white relative overflow-hidden shadow-md">
+                        <!-- Decorative circle -->
+                        <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/5 rounded-full blur-xl"></div>
+                        <div class="flex items-center gap-2 mb-4 relative z-10">
+                            <div class="w-6 h-6 rounded bg-white flex items-center justify-center">
+                                <i class="fa-solid fa-graduation-cap text-brand-dark text-xs"></i>
+                            </div>
+                            <span class="font-semibold text-sm">Eduplex</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2 relative z-10">Go Premium</h3>
+                        <p class="text-xs text-gray-400 mb-6 max-w-[140px] relative z-10 leading-relaxed">Explore 20k+
+                            courses with lifetime membership</p>
+                        <button
+                            class="brand-green px-5 py-2 rounded-xl text-sm font-semibold hover:bg-[#c2f040] transition-colors relative z-10">
+                            Get Access
+                        </button>
+                        <!-- Illustration placeholder (mimicking the reading girl) -->
+                        <div class="absolute right-0 bottom-0 w-32 h-32 opacity-90 pointer-events-none">
+                            <img alt="Premium Illustration" class="object-contain w-full h-full"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_Go6Tt_naA3i3YI6pJ_mrHKll5S5H9yG5nlEmv0c4NucXGmUKgUQarDXZ8zs7VNWCsrvzz-aqCIo2iByA0x9MTBPRBr2gP9jJciW4TGLCzahsu4E4qtHX0j5rubUzlC9C_6bU7WfWBFg3ICuDsJD10Hsw69ubefN5SOCDTykeDOxDuohp7r2MdksO3DJmY9XaKHyYJEfd5E0CFoAIkXb-DBwLZRa5A0k5Wn_oWP318T1Dh7mdO7iM" />
+                        </div>
+                    </section>
+                    <!-- END: Premium Banner -->
+                    <!-- BEGIN: Calendar Widget -->
+                    <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <button class="text-gray-400 hover:text-gray-800"><i
+                                    class="fa-solid fa-chevron-left text-xs"></i></button>
+                            <h3 class="font-semibold text-sm text-gray-800">August, 2023</h3>
+                            <button class="text-gray-400 hover:text-gray-800"><i
+                                    class="fa-solid fa-chevron-right text-xs"></i></button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1 text-center mb-2">
+                            <span class="text-[10px] font-medium text-gray-400">S</span>
+                            <span class="text-[10px] font-medium text-gray-400">M</span>
+                            <span class="text-[10px] font-medium text-gray-400">T</span>
+                            <span class="text-[10px] font-medium text-gray-400">W</span>
+                            <span class="text-[10px] font-medium text-gray-400">T</span>
+                            <span class="text-[10px] font-medium text-gray-400">F</span>
+                            <span class="text-[10px] font-medium text-gray-400">S</span>
+                        </div>
+                        <div class="grid grid-cols-7 gap-y-2 text-center text-xs text-gray-700 font-medium">
+                            <!-- Row 1 -->
+                            <span class="text-gray-300 py-1">30</span>
+                            <span class="text-gray-300 py-1">31</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">1</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">2</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">3</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">4</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">5</span>
+                            <!-- Row 2 -->
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">6</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">7</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">8</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">9</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">10</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">11</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">12</span>
+                            <!-- Row 3 -->
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">13</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">14</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">15</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">16</span>
+                            <span class="bg-brand-green text-brand-dark rounded-full py-1 cursor-pointer">17</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">18</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">19</span>
+                            <!-- Row 4 -->
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">20</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">21</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">22</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">23</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">24</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">25</span>
+                            <span class="py-1 hover:bg-gray-100 rounded-full cursor-pointer">26</span>
+                        </div>
+                    </section>
+                    <!-- END: Calendar Widget -->
+                    <!-- BEGIN: Assignments -->
+                    <section class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex-1 flex flex-col">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-lg font-bold text-gray-800">Assignments</h2>
+                            <button
+                                class="w-6 h-6 rounded-full bg-brand-green text-brand-dark flex items-center justify-center hover:bg-[#c2f040] transition-colors">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                        <div class="flex flex-col gap-3 overflow-y-auto pr-1 scrollbar-hide">
+                            <!-- Assignment 1 -->
+                            <div
+                                class="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:shadow-sm transition-shadow">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center text-sm">
+                                        <i class="fa-solid fa-chart-pie"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-sm text-gray-800">Methods of data</h4>
+                                        <p class="text-[10px] text-gray-400">02 July, 10:30 AM</p>
+                                    </div>
+                                </div>
+                                <span
+                                    class="bg-blue-100 text-blue-600 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">In
+                                    progress</span>
+                            </div>
+                            <!-- Assignment 2 -->
+                            <div
+                                class="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:shadow-sm transition-shadow">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-green-50 text-green-500 flex items-center justify-center text-sm">
+                                        <i class="fa-solid fa-chart-line"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-sm text-gray-800">Market Research</h4>
+                                        <p class="text-[10px] text-gray-400">14 June, 12:45 AM</p>
+                                    </div>
+                                </div>
+                                <span
+                                    class="bg-brand-green/30 text-green-700 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">Completed</span>
+                            </div>
+                            <!-- Assignment 3 -->
+                            <div
+                                class="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:shadow-sm transition-shadow">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="w-8 h-8 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center text-sm">
+                                        <i class="fa-solid fa-database"></i>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-sm text-gray-800">Data Collection</h4>
+                                        <p class="text-[10px] text-gray-400">12 May, 11:00 AM</p>
+                                    </div>
+                                </div>
+                                <span
+                                    class="bg-orange-100 text-orange-600 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">Upcoming</span>
+                            </div>
+                        </div>
+                    </section>
+                    <!-- END: Assignments -->
+                </div>
+            </div>
+        </main>
+        <!-- END: Main Content Area -->
+    </div>
+    <!-- END: Main Dashboard Container -->
+    <!-- Scripts for Chart.js setup -->
+    <script data-purpose="chart-setup">
+        document.addEventListener('DOMContentLoaded', function () {
+            const ctx = document.getElementById('activityChart').getContext('2d');
+
+            const gradientBar = ctx.createLinearGradient(0, 0, 0, 200);
+            gradientBar.addColorStop(0, '#1A1A1A');
+            gradientBar.addColorStop(1, '#4A4A4A');
+
+            const data = {
+                labels: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+                datasets: [{
+                    label: 'Hours',
+                    data: [2.5, 4.2, 2.1, 6.5, 4.0, 3.8, 0],
+                    backgroundColor: function (context) {
+                        const index = context.dataIndex;
+                        return index === 3 ? '#D4FF5B' : gradientBar; // Highlight Wednesday
+                    },
+                    borderRadius: 4,
+                    barThickness: 6,
+                }]
+            };
+
+            const config = {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {display: false},
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: '#1A1A1A',
+                            titleColor: '#fff',
+                            bodyColor: '#D4FF5B',
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: false,
+                            callbacks: {
+                                title: () => null, // Hide title
+                                label: function (context) {
+                                    return context.parsed.y + 'h 45 min'; // Mock label format
+                                },
+                                afterBody: function () {
+                                    return '5 Jan 2023';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 8,
+                            ticks: {
+                                stepSize: 2,
+                                callback: function (value) {return value + 'h';},
+                                color: '#9CA3AF',
+                                font: {size: 10}
+                            },
+                            grid: {
+                                display: false,
+                                drawBorder: false,
+                            },
+                            border: {display: false}
+                        },
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                color: '#9CA3AF',
+                                font: {size: 11}
+                            },
+                            border: {display: false}
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            };
+
+            new Chart(ctx, config);
+        });
+    </script>
+</body>
+
+</html>
