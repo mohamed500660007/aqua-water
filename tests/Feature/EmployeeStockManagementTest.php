@@ -162,4 +162,21 @@ class EmployeeStockManagementTest extends TestCase
             ->assertOk()
             ->assertSee('تسليم بضاعة لموظف');
     }
+
+    /**
+     * انحدار: كانت قيمة المخزن الافتراضية في حالة Alpine تُهيَّأ من old('warehouse_id')
+     * الفارغة عند أول تحميل بدل المخزن المختار فعليًا في القائمة، فيظهر رصيد كل المنتجات صفرًا.
+     */
+    public function test_the_default_warehouse_id_matches_the_preselected_warehouse_in_the_form_state(): void
+    {
+        User::factory()->create(['role' => 'مندوب مبيعات']);
+
+        $html = $this->get(route('inventory.employee-stocks.create'))->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/warehouseId:\s*[\'"]'.$this->warehouse->id.'[\'"]/',
+            $html,
+            'يجب أن تُهيَّأ warehouseId بمعرّف المخزن المختار افتراضيًا في القائمة، لا بقيمة فارغة.',
+        );
+    }
 }
