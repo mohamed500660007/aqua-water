@@ -4,7 +4,7 @@
      Alpine أثناء التنقّل، لأن هذا الرابط يعيش داخل شريط محفوظ (@@persist)
      لا يُعاد رسمه بين الصفحات. --}}
 <a class="sb-item nav-item relative flex items-center gap-3 px-3 h-11 rounded-xl text-[13px] font-semibold transition-colors {{ $active ? 'nav-item-active' : 'text-gray-400' }}"
-    x-bind:class="$store.nav.isActive(@js($href)) ? 'nav-item-active' : 'text-gray-400'"
+    x-bind:class="{ 'nav-item-active': $store.nav.isActive(@js($href)), 'text-gray-400': !$store.nav.isActive(@js($href)) }"
     data-nav-href="{{ $href }}" href="{{ $href }}" title="{{ $label }}" wire:navigate>
     <x-icon class="w-[18px] h-[18px] shrink-0" :name="$icon" />
     <span class="sb-expanded truncate flex-1">{{ $label }}</span>

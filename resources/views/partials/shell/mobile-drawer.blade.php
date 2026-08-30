@@ -47,7 +47,7 @@
                     @foreach ($group['items'] as $item)
                         @php($href = route($item['route']))
                         <a class="flex items-center gap-3 px-3 min-h-[48px] rounded-xl text-[13px] font-semibold transition-colors {{ \App\Support\Lookups::isNavActive($href) ? 'nav-item-active' : 'text-gray-400 active:bg-white/10' }}"
-                            x-bind:class="$store.nav.isActive(@js($href)) ? 'nav-item-active' : 'text-gray-400 active:bg-white/10'"
+                            x-bind:class="{ 'nav-item-active': $store.nav.isActive(@js($href)), 'text-gray-400': !$store.nav.isActive(@js($href)), 'active:bg-white/10': !$store.nav.isActive(@js($href)) }"
                             data-nav-href="{{ $href }}" href="{{ $href }}" wire:navigate
                             x-on:click="$store.drawer.close()">
                             <x-icon class="w-[18px] h-[18px] shrink-0" :name="$item['icon']" />

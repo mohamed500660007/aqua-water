@@ -1,31 +1,35 @@
 @php($navGroups = \App\Support\Lookups::navGroups())
 
 {{-- بداية: الشريط الجانبي (سطح المكتب فقط) — محفوظ عبر @@persist فلا يُعاد رسمه
-     أو يومض بين الصفحات، وحالة الطي مبنية على CSS فتظهر صحيحة من أول رسم --}}
-<aside class="app-sidebar hidden lg:flex shrink-0 bg-brand-dark flex-col py-6 text-white">
-    {{-- الشعار --}}
-    <a class="sb-item flex items-center gap-3 min-w-0 mb-1 shrink-0" href="{{ route('contracts.index') }}"
-        title="أكوا ووتر" wire:navigate>
-        <div class="w-9 h-9 shrink-0 rounded-xl brand-green flex items-center justify-center">
-            <x-icon class="w-5 h-5" name="droplets" />
-        </div>
-        <div class="sb-expanded leading-tight min-w-0">
-            <span class="block text-base font-bold tracking-wide truncate">أكوا ووتر</span>
-            <span class="block text-[10px] text-gray-500">لوحة التحكم</span>
-        </div>
-    </a>
+     أو يومض بين الصفحات، وحالة الطي مبنية على CSS فتظهر صحيحة من أول رسم.
+     x-data ضروري على الجذر: Alpine لا يفعّل أي توجيه خارج شجرة x-data. --}}
+<aside class="app-sidebar hidden lg:flex shrink-0 bg-brand-dark flex-col py-6 text-white" x-data>
+    {{-- الشعار + زر الطيّ (أيقونة فقط) --}}
+    <div class="flex items-center gap-2 mb-5 shrink-0">
+        <a class="sb-item flex items-center gap-3 min-w-0 flex-1" href="{{ route('contracts.index') }}"
+            title="أكوا ووتر" wire:navigate>
+            <div class="w-9 h-9 shrink-0 rounded-xl brand-green flex items-center justify-center">
+                <x-icon class="w-5 h-5" name="droplets" />
+            </div>
+            <div class="sb-expanded leading-tight min-w-0">
+                <span class="block text-base font-bold tracking-wide truncate">أكوا ووتر</span>
+                <span class="block text-[10px] text-gray-500">لوحة التحكم</span>
+            </div>
+        </a>
 
-    {{-- زر طيّ/إظهار الشريط — ظاهر دائمًا في الحالتين --}}
+        {{-- ظاهر عند فتح الشريط: أيقونة الطيّ --}}
+        <button
+            class="sb-expanded w-9 h-9 shrink-0 rounded-lg flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            type="button" x-on:click="$store.sidebar.toggle()" title="طيّ القائمة" aria-label="طيّ القائمة">
+            <x-icon class="w-[18px] h-[18px]" name="panel-left-close" />
+        </button>
+    </div>
+
+    {{-- ظاهر عند طيّ الشريط: أيقونة الإظهار --}}
     <button
-        class="sb-item shrink-0 flex items-center gap-3 px-3 h-10 mb-4 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-        type="button" x-on:click="$store.sidebar.toggle()" aria-label="طيّ أو إظهار الشريط الجانبي">
-        <span class="sb-expanded contents">
-            <x-icon class="w-[18px] h-[18px] shrink-0" name="panel-left-close" />
-            <span class="text-[12px] font-semibold flex-1 text-right">طيّ القائمة</span>
-        </span>
-        <span class="sb-collapsed-only items-center justify-center w-full" title="إظهار القائمة">
-            <x-icon class="w-[18px] h-[18px]" name="panel-left-open" />
-        </span>
+        class="sb-collapsed-only w-full h-10 mb-4 shrink-0 rounded-lg items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+        type="button" x-on:click="$store.sidebar.toggle()" title="إظهار القائمة" aria-label="إظهار القائمة">
+        <x-icon class="w-[18px] h-[18px]" name="panel-left-open" />
     </button>
 
     {{-- روابط التنقل مجمّعة حسب المجال --}}

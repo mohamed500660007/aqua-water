@@ -44,7 +44,12 @@
             color: #1A1A1A;
         }
 
-        .nav-item-active {
+        /* الانتقائية مرفوعة عمدًا (صنفان) حتى تتغلّب دائمًا على أدوات Tailwind
+           مثل text-gray-400 — فورقة أنماط Tailwind تُحقن وقت التشغيل بعد هذه،
+           وبانتقائية متساوية كان اللون الرمادي يفوز فيفقد العنصر النشط لونه. */
+        .nav-item.nav-item-active,
+        a.nav-item-active,
+        button.nav-item-active {
             background-color: #D4FF5B;
             color: #1A1A1A;
         }
