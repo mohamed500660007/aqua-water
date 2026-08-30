@@ -98,7 +98,7 @@
             return {
                 availability: config.availability || {},
                 productId: @js(old('product_id', '')),
-                warehouseId: @js((string) old('warehouse_id', '')),
+                warehouseId: @js((string) $defaultWarehouse),
                 quantity: Number(@js(old('quantity', 0))) || 0,
 
                 get available() {
