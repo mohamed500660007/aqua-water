@@ -8,7 +8,8 @@
 @endphp
 
 <th class="px-4 py-3 text-{{ $align }} text-[11px] font-bold text-gray-400 uppercase tracking-wide whitespace-nowrap select-none">
-    <a class="inline-flex items-center gap-1.5 group hover:text-gray-700 transition-colors" href="{{ $url }}">
+    <a class="inline-flex items-center gap-1.5 group hover:text-gray-700 transition-colors" href="{{ $url }}"
+        wire:navigate>
         {{ $slot }}
         <svg class="w-3 h-3 transition-all duration-200 {{ $arrow }}" fill="none" stroke="currentColor"
             stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24">

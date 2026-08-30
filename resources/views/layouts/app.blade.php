@@ -6,6 +6,15 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport" />
     <meta content="#FAFAFA" name="theme-color" />
+
+    {{-- يُطبَّق قبل أول رسم للصفحة حتى لا يومض الشريط الجانبي بين مفتوح ومطوي --}}
+    <script>
+        try {
+            if (localStorage.getItem('aqua-sidebar-collapsed') === '1') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        } catch (e) {}
+    </script>
     <title>@yield('title', 'لوحة التحكم') — أكوا ووتر</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -124,6 +133,70 @@
         [x-cloak] {
             display: none !important;
         }
+
+        /* منع أي انزلاق أفقي غير مقصود على مستوى التطبيق بالكامل */
+        html, body {
+            overflow-x: hidden;
+            max-width: 100%;
+        }
+
+        /* عناصر @@persist شفافة تمامًا للتخطيط حتى لا تكسر flex/grid المحيط بها */
+        [x-persist] {
+            display: contents;
+        }
+
+        /* ===== حالة طي الشريط الجانبي =====
+           مبنية على CSS وصنف على <html> يُضبط قبل أول رسم، فلا يحدث أي وميض
+           في انتظار تحميل Alpine، وتبقى الحالة ثابتة أثناء التنقل بين الصفحات. */
+        .app-sidebar {
+            width: 16rem;
+            padding-inline: 1.25rem;
+            transition: width .22s ease, padding .22s ease;
+        }
+
+        html.sidebar-collapsed .app-sidebar {
+            width: 5rem;
+            padding-inline: .5rem;
+        }
+
+        html.sidebar-collapsed .sb-expanded {
+            display: none !important;
+        }
+
+        .sb-collapsed-only {
+            display: none !important;
+        }
+
+        html.sidebar-collapsed .sb-collapsed-only {
+            display: flex !important;
+        }
+
+        html.sidebar-collapsed .sb-item {
+            justify-content: center;
+            padding-inline: 0;
+        }
+
+        html.sidebar-collapsed .sb-group-label {
+            opacity: 0;
+            height: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* حالة تحميل زر الإرسال أثناء تنفيذ عملية CRUD */
+        button[data-submitting] {
+            pointer-events: none;
+        }
+
+        .spin {
+            animation: spin 0.7s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 
     <script>
@@ -226,6 +299,140 @@
                     this.onOk = null;
                 }
             });
+
+            // تتبّع المسار الحالي على العميل — يحدّد العنصر النشط في كل عناصر التنقل
+            // بدل الاعتماد على إعادة رسم الخادم، حتى تبقى هذه العناصر محفوظة (persist)
+            // بين صفحة وأخرى بلا وميض عند التنقل.
+            //
+            // القاعدة: العنصر النشط هو صاحب "أطول مسار مطابق" — فصفحة
+            // /dashboard/contracts/create تُفعّل «عقد جديد» وحدها لا «عقود البيع» معها.
+            Alpine.store('nav', {
+                path: '/',
+                hrefs: [],
+
+                init() {
+                    this.refresh();
+                },
+
+                normalize(href) {
+                    try {
+                        return new URL(href, window.location.origin).pathname.replace(/\/+$/, '') || '/';
+                    } catch (e) {
+                        return String(href || '/');
+                    }
+                },
+
+                refresh() {
+                    this.path = window.location.pathname.replace(/\/+$/, '') || '/';
+                    // تُجمع المسارات من عناصر التنقل الموجودة فعلًا في الصفحة
+                    this.hrefs = Array.from(document.querySelectorAll('[data-nav-href]'))
+                        .map(el => this.normalize(el.getAttribute('data-nav-href')));
+                },
+
+                get bestMatch() {
+                    let best = '';
+                    this.hrefs.forEach(href => {
+                        const matches = this.path === href || this.path.startsWith(href + '/');
+                        if (matches && href.length > best.length) best = href;
+                    });
+                    return best;
+                },
+
+                isActive(href) {
+                    return this.normalize(href) === this.bestMatch;
+                },
+
+                isActiveAny(hrefs) {
+                    return (hrefs || []).some(href => this.isActive(href));
+                }
+            });
+
+            // حالة طيّ الشريط الجانبي — الحالة البصرية يقودها صنف على <html>
+            // (مضبوط قبل أول رسم)، وهنا نتولى التبديل والحفظ فقط.
+            Alpine.store('sidebar', {
+                get collapsed() {
+                    return document.documentElement.classList.contains('sidebar-collapsed');
+                },
+                toggle() {
+                    const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+                    try {
+                        localStorage.setItem('aqua-sidebar-collapsed', collapsed ? '1' : '0');
+                    } catch (e) {}
+                }
+            });
+
+            // قائمة التنقل الجانبية على الهاتف (Drawer)
+            Alpine.store('drawer', {
+                open: false,
+                show() {
+                    this.open = true;
+                    document.body.style.overflow = 'hidden';
+                },
+                close() {
+                    this.open = false;
+                    document.body.style.overflow = '';
+                },
+                toggle() {
+                    this.open ? this.close() : this.show();
+                }
+            });
+        });
+
+        // تحديث العنصر النشط في التنقل + إعادة رسم الأيقونات والرسوم البيانية
+        // بعد كل انتقال SPA عبر Livewire (لا يحدث DOMContentLoaded من جديد)
+        document.addEventListener('livewire:navigated', function () {
+            if (window.Alpine && Alpine.store('nav')) Alpine.store('nav').refresh();
+            if (window.Alpine && Alpine.store('drawer')) Alpine.store('drawer').close();
+
+            // الصنف يعيش على <html> الذي لا تستبدله عملية التنقل، لكن نعيد ضبطه
+            // احتياطًا لو أُعيد تحميل الصفحة بالكامل من مسار آخر.
+            try {
+                document.documentElement.classList.toggle(
+                    'sidebar-collapsed',
+                    localStorage.getItem('aqua-sidebar-collapsed') === '1'
+                );
+            } catch (e) {}
+
+            renderIcons();
+            initCharts();
+        });
+
+        // ===== الانتقال بين الصفحات بلا إعادة تحميل كاملة (نماذج البحث والفلاتر) =====
+        function navigateForm(form) {
+            if (!form) return;
+            const params = new URLSearchParams(new FormData(form));
+            // إزالة الحقول الفارغة حتى يبقى رابط الصفحة نظيفًا وقابلًا للمشاركة
+            Array.from(params.keys()).forEach(key => {
+                if (!params.get(key)) params.delete(key);
+            });
+            const query = params.toString();
+            const url = form.getAttribute('action') + (query ? '?' + query : '');
+            Alpine.navigate(url);
+        }
+        window.navigateForm = navigateForm;
+
+        // ===== حالة تحميل موحّدة لأي نموذج CRUD عند الإرسال =====
+        // تُطبَّق تلقائيًا على كل النماذج دون الحاجة لتعديل كل صفحة على حدة.
+        document.addEventListener('submit', function (e) {
+            const form = e.target;
+            if (!(form instanceof HTMLFormElement)) return;
+            // لا شيء لعمله إذا منع التحقق الفوري (Alpine) الإرسال فعليًا
+            if (e.defaultPrevented) return;
+            if (form.hasAttribute('data-no-loading')) return;
+
+            const button = form.querySelector('button[type="submit"]');
+            if (!button || button.hasAttribute('data-submitting')) return;
+
+            button.setAttribute('data-submitting', '1');
+            button.disabled = true;
+            button.dataset.originalHtml = button.innerHTML;
+            button.innerHTML = `
+                <svg class="w-[18px] h-[18px] spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                    <path class="opacity-90" d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
+                </svg>
+                <span>جارٍ التنفيذ...</span>
+            `;
         });
 
         // ===== جدول بيانات: بحث + فلاتر + ترتيب + ترقيم صفحات =====
@@ -488,27 +695,37 @@
         });
     </script>
 
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    {{-- Livewire يوفّر Alpine.js نفسه (مضمَّن داخل حزمته) ويحقن سكربتاته تلقائيًا،
+         فلا حاجة لتحميل Alpine من CDN بشكل منفصل — تحميله مرتين يكسر التطبيق. --}}
     @stack('styles')
 </head>
 
 <body class="min-h-[100dvh]">
     <div class="bg-[#FAFAFA] lg:bg-white w-full h-[100dvh] flex overflow-hidden relative">
-        @include('partials.shell.sidebar')
+        @persist('sidebar')
+            @include('partials.shell.sidebar')
+        @endpersist
 
-        <main class="flex-1 bg-[#FAFAFA] flex flex-col overflow-y-auto overscroll-contain" id="appMain">
+        {{-- min-w-0 ضروري: بدونه يرفض عنصر flex الانكماش تحت عرض محتواه،
+             فتدفع الجداول العريضة الصفحة كلها وتُحدث انزلاقًا أفقيًا على الهاتف --}}
+        <main class="flex-1 min-w-0 bg-[#FAFAFA] flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain"
+            id="appMain">
             @include('partials.shell.header-mobile')
             @include('partials.shell.header-desktop')
 
-            <div class="flex-1 px-5 pt-1 pb-app lg:px-8 lg:pt-2 lg:pb-8">
-                <div class="max-w-[1600px] mx-auto">
+            <div class="flex-1 min-w-0 px-4 pt-3 pb-app sm:px-5 lg:px-8 lg:pt-4 lg:pb-8">
+                <div class="max-w-[1600px] min-w-0 mx-auto">
                     @yield('content')
                 </div>
             </div>
         </main>
 
-        @include('partials.shell.bottom-nav')
-        @include('partials.shell.more-sheet')
+        @persist('bottom-nav')
+            @include('partials.shell.bottom-nav')
+        @endpersist
+        @persist('mobile-drawer')
+            @include('partials.shell.mobile-drawer')
+        @endpersist
     </div>
 
     {{-- عناصر عامة: تنبيهات + تأكيد الحذف --}}
@@ -520,72 +737,6 @@
             x-init="$store.toast.{{ session('error') ? 'error' : 'success' }}(@js(session('error') ?? session('success')))"></div>
     @endif
 
-    <script data-purpose="more-sheet">
-        (function () {
-            const sheet = document.getElementById('moreSheet');
-            const handle = document.getElementById('moreSheetHandle');
-            const backdrop = document.getElementById('sheetBackdrop');
-            const openBtn = document.getElementById('openMoreSheet');
-            const closeBtn = document.getElementById('closeMoreSheet');
-            const nav = document.getElementById('bottomNav');
-            const main = document.getElementById('appMain');
-
-            if (!sheet || !backdrop) return;
-            let isOpen = false;
-
-            function openSheet() {
-                isOpen = true;
-                sheet.style.transform = '';
-                sheet.classList.remove('translate-y-full');
-                backdrop.classList.remove('opacity-0', 'pointer-events-none');
-                if (nav) nav.classList.add('opacity-0', 'pointer-events-none', 'translate-y-8');
-                if (main) main.classList.add('overflow-hidden');
-                if (openBtn) openBtn.setAttribute('aria-expanded', 'true');
-            }
-
-            function closeSheet() {
-                isOpen = false;
-                sheet.style.transform = '';
-                sheet.classList.add('translate-y-full');
-                backdrop.classList.add('opacity-0', 'pointer-events-none');
-                if (nav) nav.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-8');
-                if (main) main.classList.remove('overflow-hidden');
-                if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
-            }
-
-            if (openBtn) openBtn.addEventListener('click', openSheet);
-            if (closeBtn) closeBtn.addEventListener('click', closeSheet);
-            backdrop.addEventListener('click', closeSheet);
-
-            document.addEventListener('keydown', e => {
-                if (e.key === 'Escape' && isOpen) closeSheet();
-            });
-
-            if (handle) {
-                let startY = 0, deltaY = 0, dragging = false;
-                handle.addEventListener('touchstart', e => {
-                    dragging = true; deltaY = 0; startY = e.touches[0].clientY;
-                    sheet.style.transition = 'none';
-                }, {passive: true});
-                handle.addEventListener('touchmove', e => {
-                    if (!dragging) return;
-                    deltaY = e.touches[0].clientY - startY;
-                    if (deltaY > 0) sheet.style.transform = 'translateY(' + deltaY + 'px)';
-                }, {passive: true});
-                handle.addEventListener('touchend', () => {
-                    if (!dragging) return;
-                    dragging = false;
-                    sheet.style.transition = '';
-                    if (deltaY > 80) closeSheet(); else sheet.style.transform = '';
-                    deltaY = 0;
-                });
-            }
-
-            window.addEventListener('resize', () => {
-                if (isOpen && window.innerWidth >= 1024) closeSheet();
-            });
-        })();
-    </script>
 
     @stack('scripts')
 </body>

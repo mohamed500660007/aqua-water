@@ -28,20 +28,20 @@
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
-            action="{{ route('maintenance-plans.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }">
+            action="{{ route('maintenance-plans.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }" x-on:submit.prevent="navigateForm($el)">
             <input name="sort" type="hidden" value="{{ request('sort') }}" />
             <input name="dir" type="hidden" value="{{ request('dir') }}" />
 
-            <x-ui.search-input name="q" placeholder="ابحث باسم الخطة أو وصفها..." value="{{ request('q') }}" x-model="q" />
+            <x-ui.search-input name="q" placeholder="ابحث باسم الخطة أو وصفها..." value="{{ request('q') }}" x-model="q" x-on:input.debounce.450ms="navigateForm($el.form)" />
 
             <x-ui.select icon="circle-dot" name="status" :options="$statuses" placeholder="كل الحالات"
-                :selected="request('status')" x-on:change="$el.form.submit()" />
+                :selected="request('status')" x-on:change="navigateForm($el.form)" />
 
             <x-ui.btn icon="search" size="md" type="submit">بحث</x-ui.btn>
 
             @if ($hasFilters)
                 <a class="shrink-0 h-11 px-3.5 rounded-xl text-[12px] font-bold text-gray-500 hover:text-brand-dark hover:bg-gray-50 border border-gray-200 transition-colors flex items-center gap-1.5"
-                    href="{{ route('maintenance-plans.index') }}">
+                    href="{{ route('maintenance-plans.index') }}" wire:navigate>
                     <x-icon class="w-3.5 h-3.5" name="rotate-ccw" />
                     إعادة ضبط
                 </a>
@@ -64,7 +64,7 @@
                     @foreach ($plans as $plan)
                         <tr class="hover:bg-gray-50/70 transition-colors">
                             <td class="px-4 py-3">
-                                <a class="min-w-0 block" href="{{ route('maintenance-plans.show', $plan) }}">
+                                <a class="min-w-0 block" href="{{ route('maintenance-plans.show', $plan) }}" wire:navigate>
                                     <p class="text-[13px] font-bold text-gray-800 truncate">{{ $plan->name }}</p>
                                     <p class="text-[11px] text-gray-400 truncate max-w-[280px]">
                                         {{ $plan->description ?: '—' }}</p>

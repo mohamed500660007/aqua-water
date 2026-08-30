@@ -11,7 +11,7 @@
 @php($classes = 'w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition-colors active:scale-90 ' . ($tones[$tone] ?? $tones['default']))
 
 @if ($href)
-    <a aria-label="{{ $label }}" href="{{ $href }}" title="{{ $label }}"
+    <a aria-label="{{ $label }}" href="{{ $href }}" title="{{ $label }}" wire:navigate
         {{ $attributes->merge(['class' => $classes]) }}>
         <x-icon class="w-[17px] h-[17px]" :name="$icon" />
     </a>
