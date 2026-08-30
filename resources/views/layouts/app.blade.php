@@ -197,6 +197,33 @@
             animation: spin 0.7s linear infinite;
         }
 
+        /* ظهور متتابع (staggered) لبطاقات قائمة «المزيد» على الهاتف —
+           كل بطاقة تنطّ بعد التي قبلها بفارق بسيط فيبدو الفتح حيًّا لا دفعة واحدة.
+           backwards تُبقيها مخفية أثناء فترة التأخير قبل بدء الحركة. */
+        @keyframes tileIn {
+            from {
+                opacity: 0;
+                transform: translateY(18px) scale(.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .more-tile {
+            animation: tileIn .42s cubic-bezier(.34, 1.56, .64, 1) backwards;
+        }
+
+        /* احترام تفضيل تقليل الحركة في نظام المستخدم */
+        @media (prefers-reduced-motion: reduce) {
+            .more-tile {
+                animation-duration: .01ms;
+                animation-delay: 0ms !important;
+            }
+        }
+
         @keyframes spin {
             to {
                 transform: rotate(360deg);
@@ -366,10 +393,23 @@
                 }
             });
 
+            // لوحة «المزيد» على الهاتف — تنبثق من شريط التنقل السفلي نفسه.
+            // لا تُفتح أبدًا مع القائمة الجانبية في آن واحد.
+            Alpine.store('more', {
+                open: false,
+                show() {
+                    Alpine.store('drawer').close();
+                    this.open = true;
+                },
+                close() { this.open = false; },
+                toggle() { this.open ? this.close() : this.show(); }
+            });
+
             // قائمة التنقل الجانبية على الهاتف (Drawer)
             Alpine.store('drawer', {
                 open: false,
                 show() {
+                    Alpine.store('more').close();
                     this.open = true;
                     document.body.style.overflow = 'hidden';
                 },
@@ -388,6 +428,7 @@
         document.addEventListener('livewire:navigated', function () {
             if (window.Alpine && Alpine.store('nav')) Alpine.store('nav').refresh();
             if (window.Alpine && Alpine.store('drawer')) Alpine.store('drawer').close();
+            if (window.Alpine && Alpine.store('more')) Alpine.store('more').close();
 
             // الصنف يعيش على <html> الذي لا تستبدله عملية التنقل، لكن نعيد ضبطه
             // احتياطًا لو أُعيد تحميل الصفحة بالكامل من مسار آخر.
