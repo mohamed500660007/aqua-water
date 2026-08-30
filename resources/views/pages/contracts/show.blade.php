@@ -33,7 +33,7 @@
                         <x-ui.avatar :name="$contract->customer?->name ?? ''" size="w-12 h-12" />
                         <div class="min-w-0">
                             <a class="text-sm font-bold text-gray-800 truncate block"
-                                href="{{ route('customers.show', $contract->customer_id) }}">
+                                href="{{ route('customers.show', $contract->customer_id) }}" wire:navigate>
                                 {{ $contract->customer?->name }}</a>
                             <p class="text-[12px] text-gray-400" dir="ltr">{{ $contract->customer?->code }}</p>
                         </div>
@@ -200,7 +200,7 @@
                 <div class="flex items-center justify-between gap-3 mb-3">
                     <h2 class="text-sm font-bold text-gray-800">أثر العقد على المخزون</h2>
                     <a class="text-[11px] font-bold text-gray-400 hover:text-brand-dark"
-                        href="{{ route('inventory.movements.index') }}">السجل</a>
+                        href="{{ route('inventory.movements.index') }}" wire:navigate>السجل</a>
                 </div>
 
                 <p class="text-[12px] text-gray-500 leading-relaxed">

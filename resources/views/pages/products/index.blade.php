@@ -29,25 +29,25 @@
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
-            action="{{ route('products.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }">
+            action="{{ route('products.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }" x-on:submit.prevent="navigateForm($el)">
             <input name="sort" type="hidden" value="{{ request('sort') }}" />
             <input name="dir" type="hidden" value="{{ request('dir') }}" />
 
             <x-ui.search-input name="q" placeholder="ابحث باسم المنتج أو الكود..." value="{{ request('q') }}"
-                x-model="q" />
+                x-model="q" x-on:input.debounce.450ms="navigateForm($el.form)" />
 
             @if ($categories)
                 <x-ui.select icon="layers" name="category" :options="$categories" placeholder="كل التصنيفات"
-                    :selected="request('category')" x-on:change="$el.form.submit()" />
+                    :selected="request('category')" x-on:change="navigateForm($el.form)" />
             @endif
             <x-ui.select icon="circle-dot" name="status" :options="$statuses" placeholder="كل الحالات"
-                :selected="request('status')" x-on:change="$el.form.submit()" />
+                :selected="request('status')" x-on:change="navigateForm($el.form)" />
 
             <x-ui.btn icon="search" size="md" type="submit">بحث</x-ui.btn>
 
             @if ($hasFilters)
                 <a class="shrink-0 h-11 px-3.5 rounded-xl text-[12px] font-bold text-gray-500 hover:text-brand-dark hover:bg-gray-50 border border-gray-200 transition-colors flex items-center gap-1.5"
-                    href="{{ route('products.index') }}">
+                    href="{{ route('products.index') }}" wire:navigate>
                     <x-icon class="w-3.5 h-3.5" name="rotate-ccw" />
                     إعادة ضبط
                 </a>
@@ -71,7 +71,7 @@
                     @foreach ($products as $product)
                         <tr class="hover:bg-gray-50/70 transition-colors">
                             <td class="px-4 py-3">
-                                <a class="min-w-0 block" href="{{ route('products.show', $product) }}">
+                                <a class="min-w-0 block" href="{{ route('products.show', $product) }}" wire:navigate>
                                     <p class="text-[13px] font-bold text-gray-800 truncate">{{ $product->name }}</p>
                                     <p class="text-[11px] text-gray-400" dir="ltr">{{ $product->sku }}</p>
                                 </a>

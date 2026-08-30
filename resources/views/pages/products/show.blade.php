@@ -74,7 +74,7 @@
                         <h2 class="text-sm font-bold text-gray-800">آخر حركات المخزون</h2>
                     </div>
                     <a class="text-[11px] font-bold text-gray-400 hover:text-brand-dark"
-                        href="{{ route('inventory.movements.index', ['product_id' => $product->id]) }}">كل الحركات</a>
+                        href="{{ route('inventory.movements.index', ['product_id' => $product->id]) }}" wire:navigate>كل الحركات</a>
                 </div>
 
                 <div class="overflow-x-auto scrollbar-hide">

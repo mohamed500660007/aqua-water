@@ -23,7 +23,7 @@
 @endphp
 
 @if ($href)
-    <a {{ $attributes->merge(['class' => $base]) }} href="{{ $href }}">
+    <a {{ $attributes->merge(['class' => $base]) }} href="{{ $href }}" wire:navigate>
         @if ($icon)
             <x-icon class="{{ $iconSize }}" :name="$icon" />
         @endif
