@@ -258,6 +258,28 @@ class SalesContractManagementTest extends TestCase
             ->assertSee($installer->name);
     }
 
+    /**
+     * انحدار: كانت "المتاح" تُعرض كرقم مجرّد بلا سياق، فيبدو صفر المخزن الفارغ أو صفر
+     * الموظف الذي لم يستلم بضاعة بعد وكأنه خلل عشوائي. الآن تُسمّى المصدر صراحةً.
+     */
+    public function test_create_page_names_the_selected_stock_source_and_wires_employee_totals(): void
+    {
+        $salesRep = User::factory()->create(['role' => 'مندوب مبيعات']);
+        app(EmployeeStockService::class)->handOver($salesRep->id, $this->device->id, $this->warehouse->id, 3, today()->toDateString());
+
+        $html = $this->get(route('contracts.create'))->getContent();
+
+        $this->assertStringContainsString('sourceLabel', $html);
+        $this->assertStringContainsString('employeeTotal', $html);
+        $this->assertStringContainsString($this->warehouse->name, $html);
+
+        $this->assertMatchesRegularExpression(
+            '/warehouseNames:\s*JSON\.parse/',
+            $html,
+            'يجب تمرير أسماء المخازن إلى حالة Alpine حتى يظهر اسم المصدر بدل رقمه.',
+        );
+    }
+
     public function test_show_page_displays_assigned_sales_rep_and_installer(): void
     {
         $salesRep = User::factory()->create(['role' => 'مندوب مبيعات', 'name' => 'ريهام عبد الفتاح']);

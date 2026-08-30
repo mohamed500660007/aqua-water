@@ -49,6 +49,8 @@
         products: @js($productCatalog),
         availability: @js($availability),
         employeeAvailability: @js($employeeAvailability),
+        warehouseNames: @js($warehouses),
+        employeeNames: @js($salesReps + $installers),
         reserved: @js($reserved),
         plans: @js($planItems),
         stockSources: @js($stockSourceOptions),
@@ -130,17 +132,38 @@
                     <div class="flex flex-wrap gap-2">
                         <template x-bind:key="source.value" x-for="source in stockSources">
                             <button
-                                class="h-10 px-4 rounded-xl text-[12px] font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                class="h-10 px-4 rounded-xl text-[12px] font-bold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
                                 type="button"
                                 x-bind:class="stockSource === source.value ? 'border-brand-green bg-brand-green/20 text-brand-dark' :
                                     'border-gray-200 text-gray-500 hover:bg-gray-50'"
                                 x-bind:disabled="source.value === 'sales_rep' ? !salesRepId : (source.value === 'installer' ? !installerId : false)"
-                                x-on:click="stockSource = source.value" x-text="source.label"></button>
+                                x-on:click="stockSource = source.value">
+                                <span x-text="source.label"></span>
+                                <template x-if="source.value === 'sales_rep' && salesRepId">
+                                    <span class="text-[10px] font-normal opacity-70"
+                                        x-text="'(' + employeeTotal(salesRepId).toLocaleString('en') + ' قطعة إجمالًا)'"></span>
+                                </template>
+                                <template x-if="source.value === 'installer' && installerId">
+                                    <span class="text-[10px] font-normal opacity-70"
+                                        x-text="'(' + employeeTotal(installerId).toLocaleString('en') + ' قطعة إجمالًا)'"></span>
+                                </template>
+                            </button>
                         </template>
                     </div>
                     <input name="stock_source" type="hidden" x-bind:value="stockSource" />
                     <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.stockSource"
                         x-text="errors.stockSource"></p>
+
+                    <p class="text-[11px] text-amber-600 mt-1.5" x-cloak
+                        x-show="stockSource === 'sales_rep' && salesRepId && employeeTotal(salesRepId) === 0">
+                        هذا المندوب لا يحمل أي بضاعة حاليًا — سلّمه بضاعة من صفحة «تسليم بضاعة لموظف» أولًا، أو اختر
+                        مصدرًا آخر.
+                    </p>
+                    <p class="text-[11px] text-amber-600 mt-1.5" x-cloak
+                        x-show="stockSource === 'installer' && installerId && employeeTotal(installerId) === 0">
+                        هذا الفني لا يحمل أي بضاعة حاليًا — سلّمه بضاعة من صفحة «تسليم بضاعة لموظف» أولًا، أو اختر
+                        مصدرًا آخر.
+                    </p>
                 </div>
             </section>
 
@@ -231,12 +254,17 @@
                                         x-text="Number(product(row)?.price || 0).toLocaleString('en') + ' ج.م'"></span>
                                 </span>
                                 <span class="text-[11px] text-gray-400">
-                                    المتاح في المصدر المختار:
+                                    المتاح في <span class="font-bold text-gray-600" x-text="sourceLabel"></span>:
                                     <span class="font-bold"
                                         x-bind:class="available(row) > 0 ? 'text-green-700' : 'text-red-500'"
                                         x-text="Number(available(row)).toLocaleString('en') + ' قطعة'"></span>
                                 </span>
                             </div>
+
+                            <p class="text-[11px] text-amber-600 mt-1" x-cloak
+                                x-show="product(row) && available(row) <= 0 && !rowError(row)">
+                                لا يوجد رصيد لهذا المنتج في <span x-text="sourceLabel"></span> حاليًا.
+                            </p>
 
                             <p class="text-[11px] font-semibold text-red-500 mt-2" x-cloak x-show="rowError(row)"
                                 x-text="rowError(row)"></p>
@@ -397,6 +425,8 @@
                 products: config.products,
                 availability: config.availability || {},
                 employeeAvailability: config.employeeAvailability || {},
+                warehouseNames: config.warehouseNames || {},
+                employeeNames: config.employeeNames || {},
                 reserved: config.reserved || {},
                 plans: config.plans || {},
                 stockSources: config.stockSources || [],
@@ -417,6 +447,28 @@
 
                 product(row) {
                     return this.products.find(p => p.id === row.product_id) || null;
+                },
+
+                // اسم المصدر المختار حاليًا — يُستخدم لتوضيح "المتاح" بدل رقم مجرّد بلا سياق
+                get sourceLabel() {
+                    if (this.stockSource === 'sales_rep') {
+                        return this.salesRepId ? (this.employeeNames[this.salesRepId] || 'المندوب') : 'مندوب المبيعات (لم يُحدَّد بعد)';
+                    }
+
+                    if (this.stockSource === 'installer') {
+                        return this.installerId ? (this.employeeNames[this.installerId] || 'الفني') : 'فني التركيب (لم يُحدَّد بعد)';
+                    }
+
+                    return this.warehouseId ? (this.warehouseNames[this.warehouseId] || 'المخزن') : 'المخزن (لم يُحدَّد بعد)';
+                },
+
+                // إجمالي ما يحمله موظف من كل المنتجات — يُعرض كتلميح جانب زر اختيار المصدر
+                employeeTotal(userId) {
+                    if (!userId) return 0;
+
+                    const items = this.employeeAvailability[userId] || {};
+
+                    return Object.values(items).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
                 },
 
                 available(row) {
@@ -495,7 +547,7 @@
                     }
 
                     if (!row.errors.quantity && quantity > this.available(row)) {
-                        row.errors.quantity = `الكمية المتاحة في المصدر المختار ${this.available(row)} فقط.`;
+                        row.errors.quantity = `الكمية المتاحة في ${this.sourceLabel} ${this.available(row)} فقط.`;
                     }
 
                     return !this.rowError(row);
