@@ -21,6 +21,7 @@ final readonly class CustomerData
         public ?string $governorate = null,
         public ?string $center = null,
         public ?string $village = null,
+        public ?string $detailedAddress = null,
         public ?string $notes = null,
     ) {}
 
@@ -38,6 +39,7 @@ final readonly class CustomerData
             governorate: $validated['governorate'] ?? null,
             center: $validated['center'] ?? null,
             village: $validated['village'] ?? null,
+            detailedAddress: $validated['detailed_address'] ?? null,
             notes: $validated['notes'] ?? null,
         );
     }

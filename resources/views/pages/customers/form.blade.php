@@ -71,6 +71,10 @@
                 <x-ui.field label="القرية" name="village" placeholder="مثال: ميت مزاح" :value="$customer?->village" list="villagesList" />
             </div>
 
+            <x-ui.field col="col-span-1 mt-4" label="العنوان التفصيلي" name="detailed_address" type="textarea"
+                rows="3" placeholder="اكتب العنوان بالتفصيل كما تراه مناسبًا (اسم الشارع، رقم العقار، علامة مميزة...)"
+                :value="$customer?->detailed_address" />
+
             <datalist id="governorateOptions">
                 @foreach ($governorates as $governorate)
                     <option value="{{ $governorate }}"></option>
@@ -117,7 +121,7 @@
                             </label>
 
                             <input
-                                class="flex-1 h-11 px-3.5 rounded-xl bg-white border text-[13px] text-gray-800 focus:ring-2 outline-none transition placeholder:text-gray-300"
+                                class="flex-1 min-w-0 h-11 px-3.5 rounded-xl bg-white border text-[13px] text-gray-800 focus:ring-2 outline-none transition placeholder:text-gray-300"
                                 dir="ltr" inputmode="tel" name="phones[]" placeholder="01012345678"
                                 x-bind:class="row.error ? 'border-red-300 focus:ring-red-200 focus:border-red-400' :
                                     'border-gray-200 focus:ring-brand-green/50 focus:border-brand-green'"

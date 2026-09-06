@@ -28,6 +28,7 @@ class Customer extends Model
         'governorate',
         'center',
         'village',
+        'detailed_address',
         'status',
         'notes',
         'registered_at',

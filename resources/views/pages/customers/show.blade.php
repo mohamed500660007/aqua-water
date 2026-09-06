@@ -58,6 +58,7 @@
                 <x-ui.detail-row label="المحافظة" :value="$customer->governorate ?? '—'" />
                 <x-ui.detail-row label="المركز" :value="$customer->center ?? '—'" />
                 <x-ui.detail-row label="القرية" :value="$customer->village ?? '—'" />
+                <x-ui.detail-row label="العنوان التفصيلي" :value="$customer->detailed_address ?? '—'" />
             </div>
         </div>
 

@@ -53,6 +53,7 @@ class CustomerService
             'governorate' => $data->governorate,
             'center' => $data->center,
             'village' => $data->village,
+            'detailed_address' => $data->detailedAddress,
             'status' => $data->status,
             'notes' => $data->notes,
             'registered_at' => $data->registeredAt,
