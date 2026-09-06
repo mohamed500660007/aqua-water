@@ -15,12 +15,12 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4 mb-4 lg:mb-6">
-        <x-ui.kpi hint="مسجلون في النظام" icon="users" label="إجمالي العملاء" tone="blue" unit="عميل"
+    <div class="grid grid-cols-3 gap-2.5 mb-4 lg:mb-6">
+        <x-ui.kpi compact icon="users" label="إجمالي العملاء" tone="blue" unit="عميل"
             :value="number_format($stats['total'])" />
-        <x-ui.kpi hint="حالة نشطة" icon="user-check" label="عملاء نشطون" tone="green" unit="عميل"
+        <x-ui.kpi compact icon="user-check" label="عملاء نشطون" tone="green" unit="عميل"
             :value="number_format($stats['active'])" />
-        <x-ui.kpi hint="بحاجة إلى متابعة" icon="user-x" label="غير نشطين" tone="gray" unit="عميل"
+        <x-ui.kpi compact icon="user-x" label="غير نشطين" tone="gray" unit="عميل"
             :value="number_format($stats['inactive'])" />
     </div>
 

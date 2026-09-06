@@ -17,19 +17,15 @@ class Lookups
             [
                 'label' => 'المبيعات',
                 'items' => [
-                    ['route' => 'contracts.index',  'icon' => 'file-text',  'label' => 'عقود البيع'],
-                    ['route' => 'contracts.create', 'icon' => 'file-plus',  'label' => 'عقد جديد'],
-                    ['route' => 'customers.index',  'icon' => 'users',      'label' => 'العملاء'],
-                    ['route' => 'customers.create', 'icon' => 'user-plus',  'label' => 'عميل جديد'],
+                    ['route' => 'contracts.index', 'icon' => 'file-text', 'label' => 'عقود البيع'],
+                    ['route' => 'customers.index', 'icon' => 'users',     'label' => 'العملاء'],
                 ],
             ],
             [
                 'label' => 'المنتجات والمخزون',
                 'items' => [
-                    ['route' => 'products.index',                  'icon' => 'package',           'label' => 'المنتجات'],
-                    ['route' => 'inventory.index',                 'icon' => 'boxes',             'label' => 'أرصدة المخزن'],
-                    ['route' => 'inventory.movements.index',       'icon' => 'arrow-left-right',  'label' => 'حركات المخزون'],
-                    ['route' => 'inventory.employee-stocks.index', 'icon' => 'truck',             'label' => 'مخزون الموظفين'],
+                    ['route' => 'products.index',                  'icon' => 'package', 'label' => 'المنتجات'],
+                    ['route' => 'inventory.employee-stocks.index', 'icon' => 'truck',    'label' => 'مخزون الموظفين'],
                 ],
             ],
             [
@@ -101,8 +97,8 @@ class Lookups
         return [
             ['route' => 'contracts.index', 'icon' => 'file-text', 'label' => 'العقود'],
             ['route' => 'customers.index', 'icon' => 'users',     'label' => 'العملاء'],
-            ['route' => 'products.index',  'icon' => 'package',   'label' => 'المنتجات'],
-            ['route' => 'inventory.index', 'icon' => 'boxes',     'label' => 'المخزون'],
+            ['route' => 'products.index',                  'icon' => 'package', 'label' => 'المنتجات'],
+            ['route' => 'inventory.employee-stocks.index', 'icon' => 'boxes',   'label' => 'المخزون'],
         ];
     }
 
