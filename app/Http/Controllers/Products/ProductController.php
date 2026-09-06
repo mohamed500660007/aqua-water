@@ -115,7 +115,6 @@ class ProductController extends Controller
     {
         return [
             'statuses' => ProductStatus::options(),
-            'defaultStatus' => ProductStatus::Active->value,
             'categories' => Product::categories(),
         ];
     }

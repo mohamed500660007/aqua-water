@@ -36,6 +36,8 @@ class ProductRequest extends FormRequest
             'name' => trim((string) $this->input('name')) ?: null,
             'category' => trim((string) $this->input('category')) ?: null,
             'warranty' => trim((string) $this->input('warranty')) ?: null,
+            // حقل الحالة مخفي عند إنشاء منتج جديد ويُنشأ دائمًا بحالة "نشط"
+            'status' => $this->input('status') ?: ProductStatus::Active->value,
         ]);
     }
 
