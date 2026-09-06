@@ -15,6 +15,8 @@ final readonly class SalesContractData
         public int $customerId,
         public int $warehouseId,
         public string $contractDate,
+        public string $installationDate,
+        public string $maintenanceDate,
         public ContractType $type,
         public StockSource $stockSource,
         public array $items,
@@ -27,6 +29,7 @@ final readonly class SalesContractData
         public ?int $installmentsCount = null,
         public ?int $installmentPeriodMonths = null,
         public ?string $firstDueDate = null,
+        public ?string $collectionDate = null,
     ) {}
 
     /** @param  array<string, mixed>  $validated */
@@ -39,6 +42,8 @@ final readonly class SalesContractData
             customerId: (int) $validated['customer_id'],
             warehouseId: (int) $validated['warehouse_id'],
             contractDate: $validated['contract_date'],
+            installationDate: $validated['installation_date'],
+            maintenanceDate: $validated['maintenance_date'],
             type: $type,
             stockSource: StockSource::from($validated['stock_source'] ?? StockSource::Warehouse->value),
             items: array_map(
@@ -55,6 +60,7 @@ final readonly class SalesContractData
             installmentsCount: $isInstallment ? (int) $validated['installments_count'] : null,
             installmentPeriodMonths: $isInstallment ? (int) $validated['installment_period_months'] : null,
             firstDueDate: $isInstallment ? $validated['first_due_date'] : null,
+            collectionDate: $validated['collection_date'] ?? null,
         );
     }
 }

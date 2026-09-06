@@ -43,6 +43,9 @@
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                     <x-ui.detail-row label="تاريخ العقد" :value="$contract->contract_date->format('Y-m-d')" />
+                    <x-ui.detail-row label="تاريخ التركيب" :value="$contract->installation_date?->format('Y-m-d') ?? '—'" />
+                    <x-ui.detail-row label="تاريخ الصيانة" :value="$contract->maintenance_date?->format('Y-m-d') ?? '—'" />
+                    <x-ui.detail-row label="تاريخ التحصيل" :value="$contract->collection_date?->format('Y-m-d') ?? '—'" />
                     <x-ui.detail-row label="المخزن" :value="$contract->warehouse?->name ?? '—'" />
                     <x-ui.detail-row label="مندوب المبيعات" :value="$contract->salesRep?->name ?? 'غير مُعيَّن'" />
                     <x-ui.detail-row label="فني التركيب" :value="$contract->installer?->name ?? 'غير مُعيَّن'" />
@@ -197,11 +200,7 @@
             @endif
 
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                    <h2 class="text-sm font-bold text-gray-800">أثر العقد على المخزون</h2>
-                    <a class="text-[11px] font-bold text-gray-400 hover:text-brand-dark"
-                        href="{{ route('inventory.movements.index') }}" wire:navigate>السجل</a>
-                </div>
+                <h2 class="text-sm font-bold text-gray-800 mb-3">أثر العقد على المخزون</h2>
 
                 <p class="text-[12px] text-gray-500 leading-relaxed">
                     صُرفت بنود العقد من «{{ $contract->warehouse?->name }}» عبر حركات مخزون مرتبطة بالعقد،

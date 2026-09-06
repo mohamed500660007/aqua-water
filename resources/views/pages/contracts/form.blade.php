@@ -92,11 +92,20 @@
                     <x-ui.field label="نوع العقد" name="type" type="select" :options="$types" :value="$defaults['type']"
                         placeholder="اختر النوع" required x-model="type" />
 
+                    <x-ui.field label="تاريخ التركيب" name="installation_date" type="date"
+                        :value="old('installation_date', $contract?->installation_date?->format('Y-m-d'))" required />
+
+                    <x-ui.field label="تاريخ الصيانة" name="maintenance_date" type="date"
+                        :value="old('maintenance_date', $contract?->maintenance_date?->format('Y-m-d'))" required />
+
+                    <x-ui.field label="تاريخ التحصيل" name="collection_date" type="date"
+                        :value="old('collection_date', $contract?->collection_date?->format('Y-m-d'))" />
+
                     <x-ui.field label="خطة الصيانة" name="maintenance_plan_id" type="select"
                         :options="$plans->pluck('name', 'id')->all()" :value="$defaults['planId']" placeholder="بدون خطة صيانة"
                         x-model="planId" />
 
-                    <x-ui.field label="ملاحظات" name="notes" type="textarea" rows="2"
+                    <x-ui.field col="sm:col-span-2" label="ملاحظات" name="notes" type="textarea" rows="2"
                         placeholder="أي تفاصيل إضافية عن العقد..." :value="$contract?->notes" />
                 </div>
             </section>
@@ -156,12 +165,12 @@
 
                     <p class="text-[11px] text-amber-600 mt-1.5" x-cloak
                         x-show="stockSource === 'sales_rep' && salesRepId && employeeTotal(salesRepId) === 0">
-                        هذا المندوب لا يحمل أي بضاعة حاليًا — سلّمه بضاعة من صفحة «تسليم بضاعة لموظف» أولًا، أو اختر
+                        هذا المندوب لا يحمل أي عهدة حاليًا — سلّمه عهدة من صفحة «تسليم عهدة لموظف» أولًا، أو اختر
                         مصدرًا آخر.
                     </p>
                     <p class="text-[11px] text-amber-600 mt-1.5" x-cloak
                         x-show="stockSource === 'installer' && installerId && employeeTotal(installerId) === 0">
-                        هذا الفني لا يحمل أي بضاعة حاليًا — سلّمه بضاعة من صفحة «تسليم بضاعة لموظف» أولًا، أو اختر
+                        هذا الفني لا يحمل أي عهدة حاليًا — سلّمه عهدة من صفحة «تسليم عهدة لموظف» أولًا، أو اختر
                         مصدرًا آخر.
                     </p>
                 </div>
