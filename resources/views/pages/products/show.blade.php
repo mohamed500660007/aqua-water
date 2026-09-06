@@ -8,8 +8,8 @@
     <x-ui.page-header icon="package" :subtitle="$product->sku" :title="$product->name">
         <x-slot:actions>
             <x-ui.btn icon="arrow-right" size="sm" variant="soft" :href="route('products.index')">رجوع للقائمة</x-ui.btn>
-            <x-ui.btn icon="plus" size="sm" variant="soft"
-                :href="route('inventory.movements.create', ['product_id' => $product->id])">تسجيل حركة</x-ui.btn>
+            <x-ui.btn icon="package-plus" size="sm" variant="soft"
+                :href="route('inventory.stock.create', ['product_id' => $product->id])">إضافة إلى المخزن</x-ui.btn>
             <x-ui.btn icon="pencil" size="sm" :href="route('products.edit', $product)">تعديل</x-ui.btn>
 
             <form action="{{ route('products.destroy', $product) }}" method="POST" x-data>
@@ -66,15 +66,11 @@
 
         <div class="lg:col-span-2">
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div class="flex items-center justify-between gap-3 p-5 border-b border-gray-100">
-                    <div class="flex items-center gap-2.5">
-                        <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
-                            <x-icon class="w-[18px] h-[18px]" name="list" />
-                        </span>
-                        <h2 class="text-sm font-bold text-gray-800">آخر حركات المخزون</h2>
-                    </div>
-                    <a class="text-[11px] font-bold text-gray-400 hover:text-brand-dark"
-                        href="{{ route('inventory.movements.index', ['product_id' => $product->id]) }}" wire:navigate>كل الحركات</a>
+                <div class="flex items-center gap-2.5 p-5 border-b border-gray-100">
+                    <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
+                        <x-icon class="w-[18px] h-[18px]" name="list" />
+                    </span>
+                    <h2 class="text-sm font-bold text-gray-800">آخر حركات المخزون</h2>
                 </div>
 
                 <div class="overflow-x-auto scrollbar-hide">

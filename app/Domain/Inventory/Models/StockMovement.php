@@ -4,7 +4,6 @@ namespace App\Domain\Inventory\Models;
 
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Products\Models\Product;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -45,15 +44,5 @@ class StockMovement extends Model
     public function reference(): MorphTo
     {
         return $this->morphTo();
-    }
-
-    /** @param  array<string, string|null>  $filters */
-    public function scopeApplyFilters(Builder $query, array $filters): void
-    {
-        foreach (['product_id', 'warehouse_id', 'type'] as $column) {
-            $value = trim((string) ($filters[$column] ?? ''));
-
-            $query->when($value !== '', fn (Builder $query) => $query->where($column, $value));
-        }
     }
 }

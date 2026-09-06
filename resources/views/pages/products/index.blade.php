@@ -11,7 +11,8 @@
 @section('content')
     <x-ui.page-header icon="package" subtitle="كتالوج المنتجات والفلاتر" title="المنتجات">
         <x-slot:actions>
-            <x-ui.btn icon="boxes" size="sm" variant="soft" :href="route('inventory.index')">المخزون</x-ui.btn>
+            <x-ui.btn icon="package-plus" size="sm" variant="soft" :href="route('inventory.stock.create')">إضافة إلى
+                المخزن</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('products.create')">منتج جديد</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>

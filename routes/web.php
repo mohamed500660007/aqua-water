@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Inventory\EmployeeStockController;
-use App\Http\Controllers\Inventory\InventoryController;
 use App\Http\Controllers\Inventory\StockMovementController;
 use App\Http\Controllers\Maintenance\MaintenancePlanController;
 use App\Http\Controllers\Products\ProductController;
@@ -29,10 +28,8 @@ Route::prefix('dashboard')->group(function () {
     Route::resource('maintenance-plans', MaintenancePlanController::class)
         ->parameters(['maintenance-plans' => 'plan']);
 
-    Route::get('inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::get('inventory/movements', [StockMovementController::class, 'index'])->name('inventory.movements.index');
-    Route::get('inventory/movements/create', [StockMovementController::class, 'create'])->name('inventory.movements.create');
-    Route::post('inventory/movements', [StockMovementController::class, 'store'])->name('inventory.movements.store');
+    Route::get('inventory/add-stock', [StockMovementController::class, 'create'])->name('inventory.stock.create');
+    Route::post('inventory/add-stock', [StockMovementController::class, 'store'])->name('inventory.stock.store');
 
     Route::get('inventory/employee-stocks', [EmployeeStockController::class, 'index'])->name('inventory.employee-stocks.index');
     Route::get('inventory/employee-stocks/create', [EmployeeStockController::class, 'create'])->name('inventory.employee-stocks.create');

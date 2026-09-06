@@ -64,20 +64,13 @@ class EmployeeStockController extends Controller
     public function store(EmployeeHandoverRequest $request): RedirectResponse
     {
         try {
-            $this->employeeStock->handOver(
-                userId: (int) $request->validated('user_id'),
-                productId: (int) $request->validated('product_id'),
-                warehouseId: (int) $request->validated('warehouse_id'),
-                quantity: (int) $request->validated('quantity'),
-                date: $request->validated('moved_at'),
-                note: $request->validated('note'),
-            );
+            $this->employeeStock->handOverMany($request->toData());
         } catch (InsufficientStockException $exception) {
-            return back()->withInput()->withErrors(['quantity' => $exception->getMessage()]);
+            return back()->withInput()->withErrors(['items' => $exception->getMessage()]);
         }
 
         return redirect()
             ->route('inventory.employee-stocks.index')
-            ->with('success', 'تم تسليم البضاعة للموظف بنجاح.');
+            ->with('success', 'تم تسليم العهدة للموظف بنجاح.');
     }
 }
