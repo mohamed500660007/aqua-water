@@ -5,7 +5,9 @@ FROM composer:2.8 AS vendor
 
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress
+# The composer image doesn't have ext-gd, which mpdf declares as a requirement —
+# skip the platform check here; the actual gd extension is installed in the runtime stage below.
+RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction --no-progress --ignore-platform-req=ext-gd
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev --no-scripts
@@ -13,9 +15,10 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts
 # ---- Runtime ----------------------------------------------------------------
 FROM php:8.3-fpm-alpine AS app
 
-RUN apk add --no-cache nginx supervisor \
-    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-    && docker-php-ext-install -j"$(nproc)" pdo_mysql bcmath opcache \
+RUN apk add --no-cache nginx supervisor libpng libjpeg-turbo freetype \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS libpng-dev libjpeg-turbo-dev freetype-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" pdo_mysql bcmath opcache gd \
     && apk del .build-deps
 
 WORKDIR /var/www/html
