@@ -118,7 +118,8 @@
                     </div>
 
                     <div class="divide-y divide-gray-50">
-                        @foreach ($contract->installments as $installment)
+                        @foreach ($contract->installments->sortBy('due_date') as $installment)
+                            @php($status = $installment->status())
                             <div class="flex items-center gap-3 px-5 py-3">
                                 <span
                                     class="w-8 h-8 shrink-0 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center text-[12px] font-bold">
@@ -129,6 +130,7 @@
                                     {{ number_format((float) $installment->amount, 2) }}
                                     <span class="text-[10px] text-gray-400">ج.م</span>
                                 </span>
+                                <x-ui.badge :tone="$status['tone']" dot>{{ $status['label'] }}</x-ui.badge>
                             </div>
                         @endforeach
                     </div>

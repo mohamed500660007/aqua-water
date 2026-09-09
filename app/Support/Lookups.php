@@ -17,8 +17,9 @@ class Lookups
             [
                 'label' => 'المبيعات',
                 'items' => [
-                    ['route' => 'contracts.index', 'icon' => 'file-text', 'label' => 'عقود البيع'],
-                    ['route' => 'customers.index', 'icon' => 'users',     'label' => 'العملاء'],
+                    ['route' => 'contracts.index',    'icon' => 'file-text',    'label' => 'عقود البيع'],
+                    ['route' => 'installments.index', 'icon' => 'wallet',       'label' => 'الأقساط'],
+                    ['route' => 'customers.index',    'icon' => 'users',        'label' => 'العملاء'],
                 ],
             ],
             [
@@ -31,8 +32,9 @@ class Lookups
             [
                 'label' => 'الصيانة والفريق',
                 'items' => [
-                    ['route' => 'maintenance-plans.index', 'icon' => 'shield-check', 'label' => 'خطط الصيانة'],
-                    ['route' => 'users.index',             'icon' => 'user-cog',     'label' => 'الموظفون'],
+                    ['route' => 'maintenance-plans.index',  'icon' => 'shield-check', 'label' => 'خطط الصيانة'],
+                    ['route' => 'maintenance-visits.index', 'icon' => 'wrench',       'label' => 'زيارات الصيانة'],
+                    ['route' => 'users.index',              'icon' => 'user-cog',     'label' => 'الموظفون'],
                 ],
             ],
         ];

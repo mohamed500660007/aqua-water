@@ -29,7 +29,7 @@ COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 
 RUN chmod +x /usr/local/bin/entrypoint \
-    && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs bootstrap/cache \
+    && mkdir -p storage/framework/{cache/data,sessions,views} storage/logs storage/fonts bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache /var/lib/nginx
 
 ENV PORT=8080

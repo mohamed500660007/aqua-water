@@ -6,6 +6,7 @@ use App\Domain\Customers\Models\Customer;
 use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Maintenance\Models\MaintenancePlan;
+use App\Domain\Maintenance\Models\MaintenanceVisit;
 use App\Domain\Sales\Enums\ContractType;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Users\Models\User;
@@ -106,6 +107,11 @@ class SalesContract extends Model
     public function maintenanceItems(): HasMany
     {
         return $this->hasMany(SalesContractMaintenanceItem::class)->orderBy('replacement_date');
+    }
+
+    public function maintenanceVisits(): HasMany
+    {
+        return $this->hasMany(MaintenanceVisit::class, 'sales_contract_id')->orderByDesc('performed_at');
     }
 
     public function stockMovements(): MorphMany
