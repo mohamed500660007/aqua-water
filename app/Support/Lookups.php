@@ -8,37 +8,47 @@ namespace App\Support;
 class Lookups
 {
     /**
-     * أقسام لوحة التحكم مجمّعة حسب المجال — تُستخدم في الشريط الجانبي وقائمة الهاتف.
+     * أقسام لوحة التحكم مجمّعة حسب المجال — تُستخدم في شريط التنقل العلوي وقائمة الهاتف.
      * كل عنصر يشير إلى مسار حقيقي موجود في التطبيق (لا روابط معطّلة).
+     * hint وtone يظهران في لوحة القسم المنبثقة، وaction هو الاختصار السريع للمجموعة.
      */
     public static function navGroups(): array
     {
         return [
             [
                 'label' => 'المبيعات',
+                'icon' => 'trending-up',
+                'tagline' => 'العملاء والعقود وتحصيل الأقساط في مكان واحد.',
+                'action' => ['route' => 'contracts.create', 'label' => 'عقد جديد', 'icon' => 'plus'],
                 'items' => [
-                    ['route' => 'customers.index',    'icon' => 'users',        'label' => 'العملاء'],
-                    ['route' => 'contracts.index',    'icon' => 'file-text',    'label' => 'عقود البيع'],
-                    ['route' => 'installments.index', 'icon' => 'wallet',       'label' => 'الأقساط'],
+                    ['route' => 'customers.index',    'icon' => 'users',     'label' => 'العملاء',    'tone' => 'blue',   'hint' => 'قاعدة العملاء وأرقامهم وعناوينهم'],
+                    ['route' => 'contracts.index',    'icon' => 'file-text', 'label' => 'عقود البيع', 'tone' => 'purple', 'hint' => 'عقود الأجهزة والصيانة نقدًا وتقسيطًا'],
+                    ['route' => 'installments.index', 'icon' => 'wallet',    'label' => 'الأقساط',    'tone' => 'green',  'hint' => 'المستحق والمتأخر والتحصيل والإيصالات'],
                 ],
             ],
             [
                 'label' => 'المنتجات والمخزون',
+                'icon' => 'boxes',
+                'tagline' => 'الأصناف والمخازن وما يحمله كل موظف من عهدة.',
+                'action' => ['route' => 'inventory.purchase-orders.create', 'label' => 'طلبية وارد', 'icon' => 'truck'],
                 'items' => [
-                    ['route' => 'products.index',                  'icon' => 'package', 'label' => 'المنتجات'],
-                    ['route' => 'inventory.purchase-orders.index', 'icon' => 'store',   'label' => 'المخزن'],
-                    ['route' => 'inventory.employee-stocks.index', 'icon' => 'user-round-check', 'label' => 'مخزون الموظفين'],
-                    ['route' => 'inventory.custody-settlements.index', 'icon' => 'scale', 'label' => 'تسويات العهد'],
+                    ['route' => 'products.index',                      'icon' => 'package',          'label' => 'المنتجات',       'tone' => 'orange', 'hint' => 'الأجهزة وقطع الغيار وأسعارها'],
+                    ['route' => 'inventory.purchase-orders.index',     'icon' => 'store',            'label' => 'المخزن',         'tone' => 'teal',   'hint' => 'طلبيات الوارد وأرصدة المخازن'],
+                    ['route' => 'inventory.employee-stocks.index',     'icon' => 'user-round-check', 'label' => 'مخزون الموظفين', 'tone' => 'blue',   'hint' => 'عهدة المناديب والفنيين'],
+                    ['route' => 'inventory.custody-settlements.index', 'icon' => 'scale',            'label' => 'تسويات العهد',   'tone' => 'amber',  'hint' => 'تصحيح العجز والزيادة في العهد'],
                 ],
             ],
             [
                 'label' => 'الصيانة والفريق',
+                'icon' => 'sparkles',
+                'tagline' => 'خدمة ما بعد البيع وكل ما يخص فريق العمل.',
+                'action' => ['route' => 'complaints.create', 'label' => 'تسجيل شكوى', 'icon' => 'message-square-plus'],
                 'items' => [
-                    ['route' => 'maintenance-plans.index',  'icon' => 'shield-check', 'label' => 'خطط الصيانة'],
-                    ['route' => 'complaints.index',         'icon' => 'message-square-warning', 'label' => 'الشكاوى'],
-                    ['route' => 'gifts.index',              'icon' => 'gift',         'label' => 'الهدايا'],
-                    ['route' => 'users.index',              'icon' => 'user-cog',     'label' => 'الموظفون'],
-                    ['route' => 'payroll.index',            'icon' => 'banknote',     'label' => 'المرتبات والعمولات'],
+                    ['route' => 'maintenance-plans.index', 'icon' => 'shield-check',           'label' => 'خطط الصيانة',        'tone' => 'teal',   'hint' => 'مواعيد تغيير الشمعات والقطع'],
+                    ['route' => 'complaints.index',        'icon' => 'message-square-warning', 'label' => 'الشكاوى',            'tone' => 'red',    'hint' => 'بلاغات العملاء وزيارات الفنيين'],
+                    ['route' => 'gifts.index',             'icon' => 'gift',                   'label' => 'الهدايا',            'tone' => 'purple', 'hint' => 'قطع مجانية للعملاء'],
+                    ['route' => 'users.index',             'icon' => 'user-cog',               'label' => 'الموظفون',           'tone' => 'blue',   'hint' => 'بيانات الفريق وأدوارهم'],
+                    ['route' => 'payroll.index',           'icon' => 'banknote',               'label' => 'المرتبات والعمولات', 'tone' => 'green',  'hint' => 'الكشوف الشهرية والصرف'],
                 ],
             ],
         ];

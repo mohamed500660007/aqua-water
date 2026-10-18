@@ -1,10 +1,19 @@
-{{-- بداية: ترويسة الهاتف --}}
-<header class="lg:hidden sticky top-0 z-30 bg-[#FAFAFA]/95 backdrop-blur-md px-4 pt-3 pb-3 border-b border-gray-100">
-    <div class="flex items-center gap-2.5">
-        <div class="min-w-0 flex-1">
-            <p class="text-[10px] text-gray-400 leading-tight truncate">@yield('page-subtitle', 'أكوا ووتر')</p>
-            <h1 class="text-[15px] font-bold text-gray-800 truncate leading-tight">@yield('page-title', 'لوحة التحكم')</h1>
+{{-- بداية: ترويسة الهاتف — جزيرة داكنة بنفس لغة شريط سطح المكتب --}}
+<header class="lg:hidden sticky top-0 z-30 px-3 pt-3 pb-2 bg-[#FAFAFA]/85 backdrop-blur-md">
+    <div class="m-island m-header">
+        <a class="m-logo" href="{{ route('contracts.index') }}" aria-label="أكوا ووتر — الرئيسية" wire:navigate>
+            <x-icon class="w-5 h-5" name="droplets" />
+        </a>
+
+        <div class="m-title">
+            <small>@yield('page-subtitle', 'أكوا ووتر')</small>
+            <strong>@yield('page-title', 'لوحة التحكم')</strong>
         </div>
+
+        <button class="m-icon-btn" type="button" aria-label="ابحث عن عميل"
+            x-data x-on:click="Alpine.$data(document.getElementById('bottomNav')).openMenu(true)">
+            <x-icon class="w-5 h-5" name="search" />
+        </button>
     </div>
 </header>
 {{-- نهاية: ترويسة الهاتف --}}

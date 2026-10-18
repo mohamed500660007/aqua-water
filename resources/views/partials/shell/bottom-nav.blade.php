@@ -1,93 +1,123 @@
 @php
     $items = \App\Support\Lookups::bottomNav();
-
-    // ما لا يظهر في الشريط السفلي يظهر داخل لوحة «المزيد»
-    $primaryRoutes = collect($items)->pluck('route')->all();
-    $moreItems = collect(\App\Support\Lookups::navItems())
-        ->reject(fn($item) => in_array($item['route'], $primaryRoutes))
-        ->values();
-    $moreHrefs = $moreItems->map(fn($item) => route($item['route']))->all();
-    $moreIsActive = collect($moreHrefs)->contains(fn($href) => \App\Support\Lookups::isNavActive($href));
+    $navGroups = \App\Support\Lookups::navGroups();
+    $primaryHrefs = array_map(fn ($item) => route($item['route']), $items);
+    // التبويبان الأولان يمين زر القائمة والباقي يساره
+    $sides = array_chunk($items, (int) ceil(count($items) / 2));
+    $tileIndex = 0;
 @endphp
 
-{{-- بداية: شريط التنقل السفلي + لوحة «المزيد» المنبثقة منه (الهاتف فقط)
-     محفوظ عبر @@persist، وx-data على الجذر لأن Alpine لا يفعّل أي توجيه خارجه --}}
-<nav class="lg:hidden fixed inset-x-3 z-40 bottom-nav-safe" id="bottomNav" x-data>
+{{-- بداية: تنقل الهاتف — شريط سفلي داكن بمؤشر منزلق وزر قائمة مرتفع، ولوحة بكل الأقسام مجمّعة.
+     محفوظ عبر @@persist، والأنماط والسلوك في partials.shell.mobile-nav-assets. --}}
+<nav class="lg:hidden fixed inset-x-3 z-40 bottom-nav-safe" id="bottomNav" aria-label="التنقل الرئيسي"
+    x-data="mobileNav(@js($primaryHrefs))" x-on:keydown.escape.window="$store.more.close()">
 
-    {{-- الخلفية المعتمة: تظهر خلف الشريط واللوحة وتُغلق عند اللمس --}}
-    <div class="fixed inset-0 -z-10 bg-brand-dark/45 backdrop-blur-[3px]" x-cloak
-        x-on:click="$store.more.close()" x-show="$store.more.open"
-        x-transition:enter="transition ease-out duration-200" x-transition:enter-end="opacity-100"
-        x-transition:enter-start="opacity-0" x-transition:leave="transition ease-in duration-150"
-        x-transition:leave-end="opacity-0" x-transition:leave-start="opacity-100"></div>
+    <div class="m-backdrop" x-cloak x-show="$store.more.open" x-on:click="$store.more.close()"
+        x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"></div>
 
-    <div class="relative mx-auto max-w-[480px] space-y-2">
+    {{-- لوحة القائمة --}}
+    <section class="m-sheet" role="dialog" aria-modal="true" aria-label="كل الأقسام" x-cloak x-show="$store.more.open"
+        x-bind:class="{ 'is-open': $store.more.open, 'is-dragging': drag.startY !== null }"
+        x-bind:style="drag.offset ? `transform: translateY(${drag.offset}px)` : ''"
+        x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
+        x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
 
-        {{-- لوحة «المزيد»: تنبثق من الشريط نفسه وبنفس لغته البصرية --}}
-        <div class="origin-bottom bg-white/95 backdrop-blur-md border border-gray-100 shadow-[0_18px_45px_-12px_rgba(26,26,26,0.4)] rounded-[1.75rem] p-3"
-            x-cloak x-show="$store.more.open" x-on:keydown.escape.window="$store.more.close()"
-            x-transition:enter="transition ease-out duration-250"
-            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-            x-transition:enter-start="opacity-0 translate-y-6 scale-95"
-            x-transition:leave="transition ease-in duration-150"
-            x-transition:leave-end="opacity-0 translate-y-4 scale-95"
-            x-transition:leave-start="opacity-100 translate-y-0 scale-100">
+        <header class="m-sheet-head" x-on:touchstart.passive="dragStart($event)" x-on:touchmove.passive="dragMove($event)"
+            x-on:touchend="dragEnd()">
+            <div class="m-handle"></div>
 
-            <div class="flex items-center justify-between px-2 pb-2.5">
-                <span class="text-[11px] font-bold text-gray-400">كل الأقسام</span>
-                <span class="text-[11px] font-bold text-gray-300">{{ count($moreItems) }}</span>
+            <div class="m-sheet-title">
+                <div>
+                    <strong>أكوا ووتر</strong>
+                    <small>كل أقسام لوحة التحكم</small>
+                </div>
+                <button class="m-icon-btn" type="button" aria-label="إغلاق القائمة" x-on:click="$store.more.close()">
+                    <x-icon class="w-5 h-5" name="x" />
+                </button>
             </div>
 
-            <div class="grid grid-cols-3 gap-2">
-                @foreach ($moreItems as $index => $item)
-                    @php($href = route($item['route']))
-                    <a class="more-tile flex flex-col items-center justify-center gap-2 py-3.5 px-1 rounded-2xl border border-gray-100 bg-white active:scale-95 transition-transform"
-                        style="animation-delay: {{ $index * 45 }}ms" data-nav-href="{{ $href }}" href="{{ $href }}"
-                        wire:navigate x-on:click="$store.more.close()">
-                        <span
-                            class="w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center transition-colors {{ \App\Support\Lookups::isNavActive($href) ? 'nav-item-active' : 'bg-gray-50 text-gray-500' }}"
-                            x-bind:class="{ 'nav-item-active': $store.nav.isActive(@js($href)), 'bg-gray-50': !$store.nav.isActive(@js($href)), 'text-gray-500': !$store.nav.isActive(@js($href)) }">
-                            <x-icon class="w-[19px] h-[19px]" :name="$item['icon']" />
-                        </span>
-                        <span class="text-xs font-semibold text-gray-600 leading-tight text-center truncate max-w-full">
-                            {{ $item['label'] }}</span>
+            <form class="m-search" action="{{ route('customers.index') }}" method="GET" role="search"
+                x-on:submit="$store.more.close()">
+                <x-icon class="m-search-icon" name="search" />
+                <input name="q" placeholder="ابحث عن عميل بالاسم أو الهاتف..." type="search" x-ref="menuSearch"
+                    aria-label="ابحث عن عميل" />
+            </form>
+
+            <div class="m-actions">
+                @foreach ($navGroups as $group)
+                    <a class="m-action" href="{{ route($group['action']['route']) }}" wire:navigate x-on:click="$store.more.close()">
+                        <x-icon :name="$group['action']['icon']" />
+                        {{ $group['action']['label'] }}
                     </a>
                 @endforeach
             </div>
+        </header>
+
+        <div class="m-sheet-body">
+            @foreach ($navGroups as $group)
+                <div class="m-group">
+                    <div class="m-group-head">
+                        <span class="m-group-icon"><x-icon :name="$group['icon']" /></span>
+                        <div class="min-w-0">
+                            <strong>{{ $group['label'] }}</strong>
+                            <small>{{ $group['tagline'] }}</small>
+                        </div>
+                    </div>
+
+                    <div class="m-tiles">
+                        @foreach ($group['items'] as $item)
+                            @php
+                                $href = route($item['route']);
+                            @endphp
+                            <a class="m-tile {{ \App\Support\Lookups::isNavActive($href) ? 'is-active' : '' }}" style="--i: {{ $tileIndex++ }}"
+                                data-nav-href="{{ $href }}" href="{{ $href }}" wire:navigate x-on:click="$store.more.close()"
+                                x-bind:class="{ 'is-active': $store.nav.isActive(@js($href)) }">
+                                <span class="tn-item-icon tone-{{ $item['tone'] }}"><x-icon :name="$item['icon']" /></span>
+                                <span>
+                                    <b>{{ $item['label'] }}</b>
+                                    <small>{{ $item['hint'] }}</small>
+                                </span>
+                                <span class="m-here">أنت هنا</span>
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
         </div>
+    </section>
 
-        {{-- الشريط العائم --}}
-        <div
-            class="bg-white/95 backdrop-blur-md border border-gray-100 shadow-[0_10px_30px_-8px_rgba(26,26,26,0.25)] rounded-[1.75rem] p-1.5 flex items-stretch gap-0.5">
+    {{-- الشريط العائم --}}
+    <div class="m-island m-dock mx-auto max-w-[480px]">
+        <span class="m-indicator" x-bind:class="{ 'is-visible': indicator.visible }"
+            x-bind:style="`--ind-x: ${indicator.x}px; --ind-w: ${indicator.w}px`"></span>
 
-            @foreach ($items as $item)
-                @php($href = route($item['route']))
-                <a class="flex-1 min-w-0 min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-[1.4rem] transition-all duration-200 {{ \App\Support\Lookups::isNavActive($href) ? 'nav-item-active' : 'text-gray-400 active:bg-gray-50' }}"
-                    x-bind:class="{ 'nav-item-active': $store.nav.isActive(@js($href)), 'text-gray-400': !$store.nav.isActive(@js($href)), 'active:bg-gray-50': !$store.nav.isActive(@js($href)) }"
-                    data-nav-href="{{ $href }}" href="{{ $href }}" wire:navigate x-on:click="$store.more.close()">
-                    <x-icon class="w-[21px] h-[21px] shrink-0" :name="$item['icon']" />
-                    <span class="text-xs font-semibold leading-none truncate max-w-full px-0.5">{{ $item['label'] }}</span>
+        @foreach ($sides as $side => $sideItems)
+            @foreach ($sideItems as $item)
+                @php
+                    $index = array_search($item, $items, true);
+                    $href = route($item['route']);
+                @endphp
+                <a class="m-tab {{ \App\Support\Lookups::isNavActive($href) ? 'is-active' : '' }}" x-ref="tab{{ $index }}"
+                    data-nav-href="{{ $href }}" href="{{ $href }}" wire:navigate
+                    x-bind:class="{ 'is-active': $store.nav.isActive(@js($href)) }"
+                    x-bind:aria-current="$store.nav.isActive(@js($href)) ? 'page' : null">
+                    <x-icon :name="$item['icon']" />
+                    <span>{{ $item['label'] }}</span>
                 </a>
             @endforeach
 
-            {{-- «المزيد»: تدور الأيقونة 135° فتتحوّل من + إلى × عند الفتح --}}
-            <button
-                class="flex-1 min-w-0 min-h-[56px] flex flex-col items-center justify-center gap-1 rounded-[1.4rem] transition-all duration-200 {{ $moreIsActive ? 'nav-item-active' : 'text-gray-400 active:bg-gray-50' }}"
-                x-bind:class="{
-                    'nav-item-active': $store.more.open || $store.nav.isActiveAny(@js($moreHrefs)),
-                    'text-gray-400': !($store.more.open || $store.nav.isActiveAny(@js($moreHrefs))),
-                    'active:bg-gray-50': !($store.more.open || $store.nav.isActiveAny(@js($moreHrefs)))
-                }"
-                type="button" x-on:click="$store.more.toggle()"
-                x-bind:aria-expanded="$store.more.open ? 'true' : 'false'" aria-label="عرض بقية الأقسام">
-                <span class="shrink-0 transition-transform duration-300"
-                    x-bind:class="$store.more.open ? 'rotate-[135deg]' : ''">
-                    <x-icon class="w-[21px] h-[21px]" name="plus" />
-                </span>
-                <span class="text-xs font-semibold leading-none truncate max-w-full px-0.5"
-                    x-text="$store.more.open ? 'إغلاق' : 'المزيد'">المزيد</span>
-            </button>
-        </div>
+            @if ($side === 0)
+                <div class="m-fab-slot">
+                    <button class="m-fab" type="button" aria-label="كل الأقسام"
+                        x-bind:class="{ 'is-open': $store.more.open }" x-bind:aria-expanded="$store.more.open"
+                        x-on:click="$store.more.open ? $store.more.close() : openMenu()">
+                        <x-icon name="plus" />
+                        <span class="m-fab-dot" x-cloak x-show="currentInMenu && ! $store.more.open"></span>
+                    </button>
+                </div>
+            @endif
+        @endforeach
     </div>
 </nav>
-{{-- نهاية: شريط التنقل السفلي --}}
+{{-- نهاية: تنقل الهاتف --}}

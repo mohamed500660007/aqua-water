@@ -7,14 +7,6 @@
     <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport" />
     <meta content="#FAFAFA" name="theme-color" />
 
-    {{-- يُطبَّق قبل أول رسم للصفحة حتى لا يومض الشريط الجانبي بين مفتوح ومطوي --}}
-    <script>
-        try {
-            if (localStorage.getItem('aqua-sidebar-collapsed') === '1') {
-                document.documentElement.classList.add('sidebar-collapsed');
-            }
-        } catch (e) {}
-    </script>
     <title>@yield('title', 'لوحة التحكم') — أكوا ووتر</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -22,7 +14,7 @@
     <script src="https://unpkg.com/lucide@0.454.0/dist/umd/lucide.min.js"></script>
 
     <style data-purpose="custom-styles">
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap');
 
         body {
             font-family: 'Cairo', sans-serif;
@@ -93,7 +85,7 @@
         }
 
         /* ===== مؤشر التحميل: قطرة المياه =====
-           يغطي منطقة المحتوى فقط (لا الشريط الجانبي)، ويظهر بعد 250ms من بدء التنقّل
+           يغطي منطقة المحتوى فقط (لا شريط التنقل)، ويظهر بعد 250ms من بدء التنقّل
            حتى لا يومض في الصفحات التي تفتح فورًا. */
         .page-loader {
             position: fixed;
@@ -107,14 +99,10 @@
             transition: opacity .2s ease, visibility 0s linear .2s;
         }
 
+        /* على سطح المكتب يبدأ أسفل شريط التنقل العلوي */
         @media (min-width: 1024px) {
             .page-loader {
-                inset-inline-start: 16rem;
-                transition: opacity .2s ease, visibility 0s linear .2s, inset-inline-start var(--sb-duration) var(--sb-ease);
-            }
-
-            html.sidebar-collapsed .page-loader {
-                inset-inline-start: 5rem;
+                top: 76px;
             }
         }
 
@@ -305,90 +293,6 @@
             display: contents;
         }
 
-        /* ===== حالة طي الشريط الجانبي =====
-           مبنية على CSS وصنف على <html> يُضبط قبل أول رسم، فلا يحدث أي وميض
-           في انتظار تحميل Alpine، وتبقى الحالة ثابتة أثناء التنقل بين الصفحات. */
-        /* الحركة: العرض يتقلّص بسلاسة، والنصوص تتلاشى بدل أن تختفي فجأة، والأيقونات
-           تنزلق إلى منتصف الشريط بتغيير الحشو لا بتبديل المحاذاة — فلا قفزات أثناء الحركة. */
-        :root {
-            --sb-ease: cubic-bezier(.4, 0, .2, 1);
-            --sb-duration: .32s;
-        }
-
-        .app-sidebar {
-            width: 16rem;
-            padding-inline: 1.25rem;
-            overflow: hidden;
-            white-space: nowrap;
-            transition: width var(--sb-duration) var(--sb-ease), padding var(--sb-duration) var(--sb-ease);
-        }
-
-        html.sidebar-collapsed .app-sidebar {
-            width: 5rem;
-            padding-inline: .5rem;
-        }
-
-        .sb-label {
-            opacity: 1;
-            transition: opacity .18s ease .1s;
-        }
-
-        html.sidebar-collapsed .sb-label {
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity .12s ease;
-        }
-
-        .sb-item,
-        .sb-logo {
-            transition: padding var(--sb-duration) var(--sb-ease), background-color .2s ease, color .2s ease;
-        }
-
-        /* عرض المحتوى عند الطي 4rem: الحشو يضع الأيقونة (18px) في المنتصف تمامًا */
-        html.sidebar-collapsed .sb-item {
-            padding-inline: calc((4rem - 18px) / 2);
-            gap: 0;
-        }
-
-        html.sidebar-collapsed .sb-logo {
-            padding-inline-start: calc((4rem - 2.25rem) / 2);
-        }
-
-        html.sidebar-collapsed .sb-expanded {
-            display: none !important;
-        }
-
-        .sb-collapsed-only {
-            display: none !important;
-        }
-
-        html.sidebar-collapsed .sb-collapsed-only {
-            display: flex !important;
-            animation: sb-fade-in .25s ease .12s both;
-        }
-
-        .sb-group-label {
-            max-height: 1.5rem;
-            transition: opacity .15s ease, max-height var(--sb-duration) var(--sb-ease), margin var(--sb-duration) var(--sb-ease);
-        }
-
-        html.sidebar-collapsed .sb-group-label {
-            opacity: 0;
-            max-height: 0;
-            margin: 0;
-            overflow: hidden;
-        }
-
-        @keyframes sb-fade-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .app-sidebar, .sb-label, .sb-item, .sb-logo, .sb-group-label { transition: none; }
-            html.sidebar-collapsed .sb-collapsed-only { animation: none; }
-        }
-
         /* حالة تحميل زر الإرسال أثناء تنفيذ عملية CRUD */
         button[data-submitting] {
             pointer-events: none;
@@ -401,29 +305,6 @@
         /* ظهور متتابع (staggered) لبطاقات قائمة «المزيد» على الهاتف —
            كل بطاقة تنطّ بعد التي قبلها بفارق بسيط فيبدو الفتح حيًّا لا دفعة واحدة.
            backwards تُبقيها مخفية أثناء فترة التأخير قبل بدء الحركة. */
-        @keyframes tileIn {
-            from {
-                opacity: 0;
-                transform: translateY(18px) scale(.8);
-            }
-
-            to {
-                opacity: 1;
-                transform: none;
-            }
-        }
-
-        .more-tile {
-            animation: tileIn .42s cubic-bezier(.34, 1.56, .64, 1) backwards;
-        }
-
-        /* احترام تفضيل تقليل الحركة في نظام المستخدم */
-        @media (prefers-reduced-motion: reduce) {
-            .more-tile {
-                animation-duration: .01ms;
-                animation-delay: 0ms !important;
-            }
-        }
 
         @keyframes spin {
             to {
@@ -925,20 +806,6 @@
                 }
             });
 
-            // حالة طيّ الشريط الجانبي — الحالة البصرية يقودها صنف على <html>
-            // (مضبوط قبل أول رسم)، وهنا نتولى التبديل والحفظ فقط.
-            Alpine.store('sidebar', {
-                get collapsed() {
-                    return document.documentElement.classList.contains('sidebar-collapsed');
-                },
-                toggle() {
-                    const collapsed = document.documentElement.classList.toggle('sidebar-collapsed');
-                    try {
-                        localStorage.setItem('aqua-sidebar-collapsed', collapsed ? '1' : '0');
-                    } catch (e) {}
-                }
-            });
-
             // اللوحة الجانبية (x-ui.drawer): تجلب HTML من الخادم عند الفتح.
             // url يميّز الطلب الأحدث حتى لا يكتب ردّ طلب قديم فوق لوحة فُتحت بعده.
             Alpine.store('drawer', {
@@ -989,21 +856,8 @@
             document.documentElement.classList.remove('is-navigating');
             if (window.Alpine && Alpine.store('nav')) Alpine.store('nav').refresh();
 
-            const sidebarNav = document.querySelector('.sb-nav');
-            if (sidebarNav) sidebarNav.scrollTop = sidebarScrollTop;
-            // بعد أن يطبّق Alpine صنف التبويب النشط الجديد
-            requestAnimationFrame(revealActiveNavItem);
             if (window.Alpine && Alpine.store('more')) Alpine.store('more').close();
             if (window.Alpine && Alpine.store('drawer')) Alpine.store('drawer').close();
-
-            // الصنف يعيش على <html> الذي لا تستبدله عملية التنقل، لكن نعيد ضبطه
-            // احتياطًا لو أُعيد تحميل الصفحة بالكامل من مسار آخر.
-            try {
-                document.documentElement.classList.toggle(
-                    'sidebar-collapsed',
-                    localStorage.getItem('aqua-sidebar-collapsed') === '1'
-                );
-            } catch (e) {}
 
             renderIcons();
             initCharts();
@@ -1365,15 +1219,7 @@
         }
         window.initializeMobileExperience = initializeMobileExperience;
 
-        // الشريط محفوظ (@@persist) لكن Livewire ينقله في الـ DOM مع كل تنقّل فيعود تمريره للأعلى
-        // ويختفي التبويب الحالي إن كان في آخر القائمة — نحفظ موضع التمرير ونعيده، ثم نتأكد أن
-        // التبويب النشط ظاهر.
-        let sidebarScrollTop = 0;
-
         document.addEventListener('livewire:navigate', function (event) {
-            const nav = document.querySelector('.sb-nav');
-            if (nav) sidebarScrollTop = nav.scrollTop;
-
             // التبويب يتحوّل لحظة الضغط بحالة «قيد الفتح» حتى تصل الصفحة. البحث والفلاتر
             // تبقى على نفس المسار، فلا يبهت المحتوى أثناء الكتابة.
             const url = event.detail?.url;
@@ -1386,21 +1232,7 @@
             document.documentElement.classList.add('is-navigating');
         });
 
-        function revealActiveNavItem() {
-            const nav = document.querySelector('.sb-nav');
-            const active = nav?.querySelector('.nav-item-active');
-            if (!nav || !active) return;
-
-            const navBox = nav.getBoundingClientRect();
-            const itemBox = active.getBoundingClientRect();
-
-            if (itemBox.top < navBox.top || itemBox.bottom > navBox.bottom) {
-                nav.scrollTop += itemBox.top - navBox.top - (navBox.height - itemBox.height) / 2;
-            }
-        }
-
         document.addEventListener('DOMContentLoaded', function () {
-            revealActiveNavItem();
             renderIcons();
             initCharts();
             initializeMobileExperience(document);
@@ -1408,13 +1240,15 @@
     </script>
 
     @include('partials.shell.date-picker')
+    @include('partials.shell.topnav-assets')
+    @include('partials.shell.mobile-nav-assets')
 
     {{-- Livewire يوفّر Alpine.js نفسه (مضمَّن داخل حزمته) ويحقن سكربتاته تلقائيًا،
          فلا حاجة لتحميل Alpine من CDN بشكل منفصل — تحميله مرتين يكسر التطبيق. --}}
     {{-- طباعة التقارير: تُخفى عناصر الهيكل ويُفرد المحتوى بطول الصفحة بدل منطقة التمرير --}}
     <style data-purpose="print-styles">
         @media print {
-            .app-sidebar,
+            .app-topnav,
             #appMain > header,
             #bottomNav,
             .no-print {
@@ -1434,14 +1268,14 @@
 </head>
 
 <body class="min-h-[100dvh]">
-    <div class="bg-[#FAFAFA] lg:bg-white w-full h-[100dvh] flex overflow-hidden relative">
-        @persist('sidebar')
-            @include('partials.shell.sidebar')
+    <div class="bg-[#FAFAFA] w-full h-[100dvh] flex flex-col overflow-hidden relative">
+        @persist('topnav')
+            @include('partials.shell.topnav')
         @endpersist
 
         {{-- min-w-0 ضروري: بدونه يرفض عنصر flex الانكماش تحت عرض محتواه،
              فتدفع الجداول العريضة الصفحة كلها وتُحدث انزلاقًا أفقيًا على الهاتف --}}
-        <main class="flex-1 min-w-0 bg-[#FAFAFA] flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain"
+        <main class="flex-1 min-w-0 min-h-0 bg-[#FAFAFA] flex flex-col overflow-y-auto overflow-x-hidden overscroll-contain"
             id="appMain">
             <x-ui.page-loader />
             @include('partials.shell.header-mobile')
