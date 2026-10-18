@@ -1,4 +1,5 @@
-@props(['variant' => 'primary', 'size' => 'md', 'icon' => null, 'href' => null])
+{{-- document: رابط لصفحة طباعة مستقلة (إيصال، قسيمة) — يُفتح في تبويب جديد بتحميل كامل لا بتنقّل SPA --}}
+@props(['variant' => 'primary', 'size' => 'md', 'icon' => null, 'href' => null, 'document' => false])
 
 @php
     $variants = [
@@ -10,9 +11,9 @@
         'outline' => 'border border-gray-200 text-gray-700 hover:bg-gray-50',
     ];
     $sizes = [
-        'sm' => 'text-[11px] px-3 py-2 gap-1.5 rounded-lg',
-        'md' => 'text-[13px] px-4 py-2.5 gap-2 rounded-xl',
-        'lg' => 'text-sm px-5 py-3 gap-2 rounded-xl',
+        'sm' => 'min-h-11 text-[13px] px-3.5 py-2.5 gap-1.5 rounded-xl',
+        'md' => 'min-h-12 text-[13px] px-4 py-2.5 gap-2 rounded-xl',
+        'lg' => 'min-h-12 text-sm px-5 py-3 gap-2 rounded-xl',
     ];
     $iconSize = $size === 'sm' ? 'w-3.5 h-3.5' : 'w-[18px] h-[18px]';
     $base =
@@ -23,7 +24,8 @@
 @endphp
 
 @if ($href)
-    <a {{ $attributes->merge(['class' => $base]) }} href="{{ $href }}" wire:navigate>
+    <a {{ $attributes->merge(['class' => $base]) }} href="{{ $href }}"
+        @if ($document) target="_blank" rel="noopener" @else wire:navigate @endif>
         @if ($icon)
             <x-icon class="{{ $iconSize }}" :name="$icon" />
         @endif

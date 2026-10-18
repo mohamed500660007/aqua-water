@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Domain\Customers\Enums\CustomerStatus;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Inventory\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class CustomerManagementTest extends TestCase
@@ -15,7 +17,6 @@ class CustomerManagementTest extends TestCase
     private function validPayload(array $overrides = []): array
     {
         return array_merge([
-            'code' => 'CUS-01000',
             'name' => 'أحمد سيد عبد الرحمن',
             'national_id' => '29001011234567',
             'governorate' => 'الدقهلية',
@@ -123,7 +124,7 @@ class CustomerManagementTest extends TestCase
     {
         $response = $this->post(route('customers.store'), $this->validPayload());
 
-        $customer = Customer::firstWhere('code', 'CUS-01000');
+        $customer = Customer::firstWhere('name', 'أحمد سيد عبد الرحمن');
 
         $response->assertRedirect(route('customers.show', $customer));
 
@@ -134,13 +135,35 @@ class CustomerManagementTest extends TestCase
         $this->assertSame('01234567890', $customer->primaryPhone->phone);
     }
 
-    public function test_it_generates_a_code_when_left_empty(): void
+    public function test_it_always_generates_the_code_and_ignores_a_submitted_one(): void
     {
         Customer::factory()->create(['code' => 'CUS-00008']);
 
-        $this->post(route('customers.store'), $this->validPayload(['code' => null, 'national_id' => null]));
+        $this->post(route('customers.store'), $this->validPayload(['code' => 'HACKED', 'national_id' => null]))
+            ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('customers', ['code' => 'CUS-00009']);
+        $this->assertDatabaseMissing('customers', ['code' => 'HACKED']);
+    }
+
+    public function test_form_has_no_code_field(): void
+    {
+        $this->get(route('customers.create'))->assertOk()->assertDontSee('name="code"', false);
+    }
+
+    public function test_it_accepts_the_returned_and_legal_statuses(): void
+    {
+        foreach ([CustomerStatus::Returned, CustomerStatus::Legal] as $index => $status) {
+            $this->post(route('customers.store'), $this->validPayload([
+                'national_id' => null,
+                'phones' => ['0101234567'.$index],
+                'status' => $status->value,
+            ]))->assertSessionHasNoErrors();
+        }
+
+        $this->assertSame(1, Customer::where('status', CustomerStatus::Returned)->count());
+        $this->assertSame(1, Customer::where('status', CustomerStatus::Legal)->count());
+        $this->get(route('customers.index'))->assertOk()->assertSee('مرتجع')->assertSee('شؤون قانونية');
     }
 
     public function test_it_normalizes_phone_numbers_before_saving(): void
@@ -174,7 +197,7 @@ class CustomerManagementTest extends TestCase
         ]))->assertSessionHasErrors(['name', 'phones', 'national_id', 'registered_at']);
 
         $this->post(route('customers.store'), $this->validPayload())
-            ->assertSessionHasErrors(['code', 'national_id']);
+            ->assertSessionHasErrors('national_id');
 
         $this->post(route('customers.store'), $this->validPayload(['phones' => ['12345']]))
             ->assertSessionHasErrors('phones.0');
@@ -196,7 +219,6 @@ class CustomerManagementTest extends TestCase
     public function test_optional_fields_may_be_left_empty(): void
     {
         $this->post(route('customers.store'), $this->validPayload([
-            'code' => null,
             'national_id' => null,
             'governorate' => null,
             'center' => null,
@@ -244,8 +266,10 @@ class CustomerManagementTest extends TestCase
         $customer = Customer::factory()->withPhones(['01012345678', '01298765432'])->create();
         $keptPhoneId = $customer->phones()->where('phone', '01298765432')->value('id');
 
+        $originalCode = $customer->code;
+
         $this->put(route('customers.update', $customer), $this->validPayload([
-            'code' => $customer->code,
+            'code' => 'CUS-99999',
             'name' => 'اسم بعد التعديل',
             'national_id' => null,
             'phones' => ['01298765432', '01100000000'],
@@ -255,6 +279,7 @@ class CustomerManagementTest extends TestCase
         $customer->refresh()->load('phones');
 
         $this->assertSame('اسم بعد التعديل', $customer->name);
+        $this->assertSame($originalCode, $customer->code);
         $this->assertSame(['01100000000', '01298765432'], $customer->phones->pluck('phone')->sort()->values()->all());
         $this->assertSame('01100000000', $customer->primaryPhone->phone);
         $this->assertDatabaseHas('customer_phones', ['id' => $keptPhoneId, 'is_primary' => false]);
@@ -269,32 +294,126 @@ class CustomerManagementTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
-    public function test_delete_action_renders_inside_an_alpine_scope(): void
+    public function test_customers_cannot_be_deleted(): void
     {
         $customer = Customer::factory()->create();
 
+        $this->assertFalse(Route::has('customers.destroy'));
+        $this->delete('/dashboard/customers/'.$customer->id)->assertStatus(405);
+        $this->assertNotSoftDeleted($customer);
+
         foreach ([route('customers.index'), route('customers.show', $customer)] as $url) {
-            $html = $this->get($url)->assertOk()->getContent();
-
-            $this->assertStringContainsString(
-                'action="'.route('customers.destroy', $customer).'" method="POST" x-data',
-                $html,
-            );
-
-            // مؤشر على وجود توجيه Blade لم يُترجم داخل خصائص المكوّنات فيكسر تعبير Alpine
-            $this->assertStringNotContainsString('@js(', $html);
+            $this->get($url)->assertOk()->assertDontSee('name="_method" value="DELETE"', false);
         }
     }
 
-    public function test_it_soft_deletes_a_customer_and_keeps_its_phones(): void
+    public function test_report_renders_a_printable_document_for_the_filtered_customers(): void
+    {
+        $legal = Customer::factory()->withPhones(['01012345678'])->create([
+            'name' => 'عميل قانوني', 'status' => CustomerStatus::Legal, 'registered_at' => '2026-10-05',
+        ]);
+        Customer::factory()->create(['name' => 'عميل نشط', 'status' => CustomerStatus::Active]);
+
+        $all = $this->get(route('customers.report', ['from' => '2026-10-01', 'to' => '2026-10-31']))->assertOk();
+        $this->assertSame(2, $all->viewData('summary')['total']);
+        $this->assertSame(1, $all->viewData('summary')['statuses']['legal']);
+        $all->assertSee('window.print()', false)->assertSee('صفحة');
+
+        $filtered = $this->get(route('customers.report', ['status' => 'legal', 'from' => '2026-10-01', 'to' => '2026-10-31']))
+            ->assertOk()
+            ->assertSee('عميل قانوني')
+            ->assertDontSee('عميل نشط');
+
+        $this->assertSame(1, $filtered->viewData('summary')['new']);
+        $this->assertTrue($filtered->viewData('rows')->sole()->is($legal));
+    }
+
+    public function test_report_does_not_run_a_query_per_customer(): void
+    {
+        Customer::factory()->count(20)->withPhones(['01012345678'])->create();
+
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
+
+        $this->get(route('customers.report'))->assertOk();
+
+        // أقسام التقرير + قوائم الفلاتر (مراكز، قرى، محافظات) — ثابت مهما زاد العملاء
+        $this->assertLessThanOrEqual(12, $queries);
+    }
+
+    public function test_view_action_opens_the_details_panel_instead_of_navigating(): void
+    {
+        $customer = Customer::factory()->create();
+
+        $this->get(route('customers.index'))
+            ->assertOk()
+            ->assertSee('$store.drawer.show', false)
+            ->assertSee(str_replace('/', '\/', route('customers.panel', $customer)), false);
+    }
+
+    public function test_panel_shows_every_section_of_the_customer_profile(): void
+    {
+        $customer = Customer::factory()->withPhones(['01012345678', '01298765432'])->create([
+            'name' => 'عميل اللوحة', 'notes' => 'ملاحظة مهمة', 'detailed_address' => 'بجوار المسجد',
+        ]);
+
+        $this->get(route('customers.panel', $customer))
+            ->assertOk()
+            ->assertDontSee('<html', false)
+            ->assertSee('عميل اللوحة')
+            ->assertSee($customer->code)
+            ->assertSee('01298765432')
+            ->assertSee('بجوار المسجد')
+            ->assertSee('ملاحظة مهمة')
+            ->assertSeeInOrder(['نظرة عامة', 'العقود', 'الأقساط', 'الصيانة', 'الشكاوى', 'الهدايا']);
+    }
+
+    public function test_panel_query_count_does_not_grow_with_the_customer_history(): void
     {
         $customer = Customer::factory()->withPhones(['01012345678'])->create();
 
-        $this->delete(route('customers.destroy', $customer))
-            ->assertRedirect(route('customers.index'));
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
 
-        $this->assertSoftDeleted($customer);
-        $this->assertDatabaseHas('customer_phones', ['customer_id' => $customer->id, 'phone' => '01012345678']);
-        $this->get(route('customers.index'))->assertDontSee($customer->code);
+        $this->get(route('customers.panel', $customer))->assertOk();
+
+        // ثابت مهما زادت العقود والأقساط: علاقة واحدة = استعلام واحد
+        $this->assertLessThanOrEqual(20, $queries);
+    }
+
+    public function test_report_toolbar_offers_the_filters_and_applies_them(): void
+    {
+        $due = Customer::factory()->create(['name' => 'عميل عليه فلوس', 'governorate' => 'الدقهلية']);
+        Customer::factory()->create(['name' => 'عميل خالص', 'governorate' => 'الدقهلية']);
+        $due->contracts()->create([
+            'code' => 'AQW-DUE', 'kind' => 'sale', 'type' => 'installment', 'stock_source' => 'warehouse',
+            'warehouse_id' => Warehouse::factory()->create()->id,
+            'contract_date' => today(), 'subtotal' => 1000, 'discount' => 0, 'total' => 1000, 'paid' => 200, 'remaining' => 800,
+        ]);
+
+        $page = $this->get(route('customers.report'))->assertOk();
+        foreach (['name="status"', 'name="origin"', 'name="governorate"', 'name="balance"', 'name="content"', 'name="sort"', 'name="dir"', 'name="q"'] as $field) {
+            $page->assertSee($field, false);
+        }
+
+        $this->get(route('customers.report', ['balance' => 'due']))
+            ->assertOk()->assertSee('عميل عليه فلوس')->assertDontSee('عميل خالص');
+
+        $this->get(route('customers.report', ['balance' => 'clear', 'governorate' => 'الدقهلية']))
+            ->assertOk()->assertSee('عميل خالص')->assertDontSee('عميل عليه فلوس');
+
+        $sorted = $this->get(route('customers.report', ['sort' => 'remaining', 'dir' => 'desc']))->viewData('rows');
+        $this->assertTrue($sorted->first()->is($due));
+
+        $summaryOnly = $this->get(route('customers.report', ['content' => 'summary']))->assertOk();
+        $this->assertCount(0, $summaryOnly->viewData('rows'));
+        $summaryOnly->assertDontSee('rpt-section-title">كشف العملاء', false);
+
+        $this->get(route('customers.report', ['content' => 'list']))
+            ->assertOk()->assertSee('rpt-section-title">كشف العملاء', false)->assertDontSee('الملخص العام');
     }
 }

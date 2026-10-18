@@ -5,25 +5,28 @@
 @section('page-subtitle', 'عقود البيع النقدية والتقسيط')
 
 @php
-    $hasFilters = collect(request()->only(['q', 'type', 'customer_id', 'from', 'to']))->filter()->isNotEmpty();
+    $hasFilters = collect(request()->only(['q', 'kind', 'type', 'customer_id', 'legal', 'from', 'to']))->filter()->isNotEmpty();
 @endphp
 
 @section('content')
     <x-ui.page-header icon="file-text" subtitle="العقود النقدية والتقسيط" title="عقود البيع">
         <x-slot:actions>
+            {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر القائمة --}}
+            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
+                href="{{ route('contracts.report', request()->only(['q', 'kind', 'type', 'customer_id', 'legal', 'from', 'to', 'sort', 'dir'])) }}"
+                target="_blank" rel="noopener">
+                <x-icon class="w-3.5 h-3.5" name="printer" />
+                تقرير العقود
+            </a>
+            <x-ui.btn icon="file-spreadsheet" size="sm" variant="soft" :href="route('contracts.import.create')">استيراد من إكسيل</x-ui.btn>
+            <x-ui.btn icon="shield-plus" size="sm" variant="soft" :href="route('contracts.create', ['kind' => 'maintenance'])">عقد صيانة جديد</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('contracts.create')">عقد جديد</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>
 
     <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
         <x-ui.kpi hint="كل العقود" icon="file-text" label="عدد العقود" tone="blue" unit="عقد"
-            :value="number_format($stats['contracts'])" />
-        <x-ui.kpi hint="بعد الخصم" icon="banknote" label="إجمالي التعاقدات" tone="green" unit="ج.م"
-            :value="number_format($stats['total'])" />
-        <x-ui.kpi hint="لم يُحصَّل بعد" icon="wallet" label="المتبقي للتحصيل" tone="amber" unit="ج.م"
-            :value="number_format($stats['remaining'])" />
-        <x-ui.kpi hint="بجدول أقساط" icon="calendar" label="عقود التقسيط" tone="purple" unit="عقد"
-            :value="number_format($stats['installments'])" />
+            :value="number_format($contractsCount)" />
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -35,6 +38,10 @@
             <x-ui.search-input name="q" placeholder="ابحث بكود العقد أو اسم العميل..." value="{{ request('q') }}"
                 x-model="q" x-on:input.debounce.450ms="navigateForm($el.form)" />
 
+            <x-ui.select icon="layers" name="kind" :options="$kinds" placeholder="بيع وصيانة"
+                :selected="request('kind')" x-on:change="navigateForm($el.form)" />
+            <x-ui.select icon="scale" name="legal" :options="['1' => 'محوّل للشؤون القانونية']" placeholder="كل الحالات"
+                :selected="request('legal')" x-on:change="navigateForm($el.form)" />
             <x-ui.select icon="credit-card" name="type" :options="$types" placeholder="كل الأنواع"
                 :selected="request('type')" x-on:change="navigateForm($el.form)" />
             <x-ui.select icon="user-round" name="customer_id" :options="$customers" placeholder="كل العملاء"
@@ -51,7 +58,8 @@
             @endif
         </form>
 
-        <div class="overflow-x-auto scrollbar-hide">
+        {{-- معاينة العقد تفتح لوحة جانبية بدل الانتقال لصفحة أخرى --}}
+        <div class="overflow-x-auto scrollbar-hide" x-data>
             <table class="w-full min-w-[900px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
@@ -69,8 +77,8 @@
                     @foreach ($contracts as $contract)
                         <tr class="hover:bg-gray-50/70 transition-colors">
                             <td class="px-4 py-3">
-                                <a class="text-[12px] font-bold text-gray-800" dir="ltr"
-                                    href="{{ route('contracts.show', $contract) }}" wire:navigate>{{ $contract->code }}</a>
+                                <button class="text-[12px] font-bold text-gray-800 hover:underline" dir="ltr" type="button"
+                                    x-on:click="$store.drawer.show({{ Js::from(route('contracts.panel', $contract)) }})">{{ $contract->code }}</button>
                             </td>
                             <td class="px-4 py-3">
                                 <p class="text-[13px] font-bold text-gray-800 truncate">
@@ -80,7 +88,13 @@
                             <td class="px-4 py-3 text-[12px] text-gray-600" dir="ltr">
                                 {{ $contract->contract_date->format('Y-m-d') }}</td>
                             <td class="px-4 py-3">
-                                <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <x-ui.badge :tone="$contract->kind->tone()">{{ $contract->kind->label() }}</x-ui.badge>
+                                    <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
+                                    @if ($contract->isReferredToLegal())
+                                        <x-ui.badge tone="red" dot>قانونية</x-ui.badge>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-[13px] font-bold text-gray-700">{{ $contract->items_count }}</td>
                             <td class="px-4 py-3">
@@ -96,19 +110,9 @@
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
-                                    <x-ui.icon-btn icon="eye" label="عرض" :href="route('contracts.show', $contract)" />
+                                    <x-ui.icon-btn icon="eye" label="عرض" tone="primary"
+                                        x-on:click="$store.drawer.show({{ Js::from(route('contracts.panel', $contract)) }})" />
                                     <x-ui.icon-btn icon="pencil" label="تعديل" :href="route('contracts.edit', $contract)" />
-                                    <form action="{{ route('contracts.destroy', $contract) }}" method="POST" x-data>
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-ui.icon-btn icon="trash-2" label="حذف" tone="danger"
-                                            x-on:click="$store.confirm.ask({
-                                                title: 'حذف العقد',
-                                                message: {{ Js::from('سيتم حذف العقد ' . $contract->code . ' وإعادة كمياته إلى المخزن.') }},
-                                                label: 'حذف',
-                                                onOk: () => $root.requestSubmit()
-                                            })" />
-                                    </form>
                                 </div>
                             </td>
                         </tr>

@@ -79,6 +79,21 @@ class StockService
             ->all();
     }
 
+    /**
+     * أرصدة كل المخازن دفعة واحدة: [warehouse_id => [product_id => quantity]] —
+     * تُغذّي النماذج التي تحسب المتاح محليًا عند تبديل المخزن.
+     *
+     * @return array<int, array<int, int>>
+     */
+    public function availabilityMatrix(): array
+    {
+        return StockBalance::query()
+            ->get(['warehouse_id', 'product_id', 'quantity'])
+            ->groupBy('warehouse_id')
+            ->map(fn ($balances) => $balances->pluck('quantity', 'product_id')->map(fn ($q) => (int) $q)->all())
+            ->all();
+    }
+
     private function lockBalance(int $productId, int $warehouseId): StockBalance
     {
         $balance = StockBalance::query()

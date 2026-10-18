@@ -7,7 +7,7 @@ namespace App\Domain\Inventory\Data;
  */
 final readonly class EmployeeHandoverData
 {
-    /** @param  list<EmployeeHandoverItemData>  $items */
+    /** @param  list<ProductQuantityData>  $items */
     public function __construct(
         public int $userId,
         public int $warehouseId,
@@ -23,7 +23,7 @@ final readonly class EmployeeHandoverData
             userId: (int) $validated['user_id'],
             warehouseId: (int) $validated['warehouse_id'],
             items: array_map(
-                fn (array $item) => EmployeeHandoverItemData::fromArray($item),
+                fn (array $item) => ProductQuantityData::fromArray($item),
                 array_values($validated['items'] ?? []),
             ),
             movedAt: $validated['moved_at'],

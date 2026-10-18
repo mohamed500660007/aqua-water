@@ -2,11 +2,12 @@
 
 namespace App\Domain\Sales\Models;
 
+use App\Domain\Complaints\Models\Complaint;
 use App\Domain\Customers\Models\Customer;
 use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Maintenance\Models\MaintenancePlan;
-use App\Domain\Maintenance\Models\MaintenanceVisit;
+use App\Domain\Sales\Enums\ContractKind;
 use App\Domain\Sales\Enums\ContractType;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Users\Models\User;
@@ -21,15 +22,17 @@ class SalesContract extends Model
 {
     use SoftDeletes;
 
-    public const SORTABLE = ['code', 'contract_date', 'total', 'created_at'];
+    public const SORTABLE = ['code', 'contract_date', 'total', 'remaining', 'created_at'];
 
     protected $fillable = [
         'code',
+        'kind',
         'customer_id',
         'sales_rep_id',
         'installer_id',
         'warehouse_id',
         'stock_source',
+        'stock_tracked',
         'maintenance_plan_id',
         'contract_date',
         'installation_date',
@@ -42,6 +45,7 @@ class SalesContract extends Model
         'total',
         'paid',
         'remaining',
+        'legal_referred_at',
         'installments_count',
         'installment_period_months',
         'first_due_date',
@@ -51,13 +55,16 @@ class SalesContract extends Model
     protected function casts(): array
     {
         return [
+            'kind' => ContractKind::class,
             'type' => ContractType::class,
             'stock_source' => StockSource::class,
+            'stock_tracked' => 'boolean',
             'contract_date' => 'date',
             'installation_date' => 'date',
             'collection_date' => 'date',
             'maintenance_date' => 'date',
             'first_due_date' => 'date',
+            'legal_referred_at' => 'date',
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
             'total' => 'decimal:2',
@@ -109,9 +116,9 @@ class SalesContract extends Model
         return $this->hasMany(SalesContractMaintenanceItem::class)->orderBy('replacement_date');
     }
 
-    public function maintenanceVisits(): HasMany
+    public function complaints(): HasMany
     {
-        return $this->hasMany(MaintenanceVisit::class, 'sales_contract_id')->orderByDesc('performed_at');
+        return $this->hasMany(Complaint::class, 'sales_contract_id')->orderByDesc('complaint_date');
     }
 
     public function stockMovements(): MorphMany
@@ -119,9 +126,66 @@ class SalesContract extends Model
         return $this->morphMany(StockMovement::class, 'reference');
     }
 
+    /**
+     * كل ما تعرضه لوحة معاينة العقد محمّلًا دفعة واحدة — عدد ثابت من الاستعلامات مهما كثرت
+     * البنود والأقساط والزيارات.
+     */
+    public function loadDetails(): static
+    {
+        $person = fn ($query) => $query->select(['id', 'name']);
+        $product = fn ($query) => $query->select(['id', 'name']);
+
+        return $this->load([
+            'customer:id,code,name,status,origin,governorate,center,village',
+            'customer.phones',
+            'salesRep' => $person,
+            'installer' => $person,
+            'warehouse:id,name',
+            'maintenancePlan:id,name',
+            'items',
+            'installments.collectedBy' => $person,
+            'maintenanceItems',
+            'complaints.technician' => $person,
+            'complaints.parts.product' => $product,
+        ]);
+    }
+
     public function isInstallment(): bool
     {
         return $this->type === ContractType::Installment;
+    }
+
+    public function isMaintenance(): bool
+    {
+        return $this->kind === ContractKind::Maintenance;
+    }
+
+    public function isReferredToLegal(): bool
+    {
+        return $this->legal_referred_at !== null;
+    }
+
+    public function scopeOfKind(Builder $query, ContractKind $kind): void
+    {
+        $query->where('kind', $kind->value);
+    }
+
+    /**
+     * Total quantity reserved per product across the contract's items.
+     *
+     * @return array<int, int>
+     */
+    public function reservedQuantitiesByProduct(): array
+    {
+        // items() applies a default ORDER BY id; MySQL's only_full_group_by rejects
+        // ordering by a non-grouped column in an aggregate, so it must be dropped here.
+        return $this->items()
+            ->reorder()
+            ->selectRaw('product_id, SUM(quantity) as quantity')
+            ->groupBy('product_id')
+            ->pluck('quantity', 'product_id')
+            ->map(fn ($quantity) => (int) $quantity)
+            ->all();
     }
 
     /** معرّف مصدر البضاعة الفعلي: مخزن، مندوب مبيعات، أو فني تركيب — حسب stock_source */
@@ -154,7 +218,7 @@ class SalesContract extends Model
     /** @param  array<string, string|null>  $filters */
     public function scopeApplyFilters(Builder $query, array $filters): void
     {
-        foreach (['type', 'customer_id', 'maintenance_plan_id'] as $column) {
+        foreach (['kind', 'type', 'customer_id', 'maintenance_plan_id', 'sales_rep_id', 'installer_id'] as $column) {
             $value = trim((string) ($filters[$column] ?? ''));
 
             $query->when($value !== '', fn (Builder $query) => $query->where($column, $value));
@@ -165,6 +229,14 @@ class SalesContract extends Model
 
         $query->when($from !== '', fn (Builder $query) => $query->whereDate('contract_date', '>=', $from));
         $query->when($to !== '', fn (Builder $query) => $query->whereDate('contract_date', '<=', $to));
+
+        $query->when(($filters['legal'] ?? '') === '1', fn (Builder $query) => $query->whereNotNull('legal_referred_at'));
+
+        match ($filters['payment'] ?? null) {
+            'open' => $query->where('remaining', '>', 0),
+            'settled' => $query->where('remaining', '<=', 0),
+            default => null,
+        };
     }
 
     public function scopeApplySort(Builder $query, ?string $column, ?string $direction): void

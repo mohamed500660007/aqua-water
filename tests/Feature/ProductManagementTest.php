@@ -9,6 +9,7 @@ use App\Domain\Inventory\Services\StockService;
 use App\Domain\Products\Enums\ProductStatus;
 use App\Domain\Products\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class ProductManagementTest extends TestCase
@@ -166,5 +167,76 @@ class ProductManagementTest extends TestCase
         $this->assertSoftDeleted($product);
         $this->assertDatabaseHas('stock_movements', ['product_id' => $product->id, 'quantity' => 5]);
         $this->get(route('products.index'))->assertDontSee($product->sku);
+    }
+
+    private function stockIn(Product $product, Warehouse $warehouse, int $quantity): void
+    {
+        app(StockService::class)->record(new StockMovementData(
+            productId: $product->id,
+            warehouseId: $warehouse->id,
+            type: StockMovementType::In,
+            quantity: $quantity,
+            movedAt: today()->toDateString(),
+        ));
+    }
+
+    public function test_index_has_no_kpi_cards_and_links_to_the_report(): void
+    {
+        $this->get(route('products.index'))
+            ->assertOk()
+            ->assertDontSee('قيمة المخزون')
+            ->assertDontSee('إجمالي القطع')
+            ->assertSee(route('products.report'), false);
+    }
+
+    public function test_report_summarises_stock_and_applies_filters(): void
+    {
+        $main = Warehouse::factory()->create(['name' => 'المخزن الرئيسي']);
+        $branch = Warehouse::factory()->create(['name' => 'مخزن الفرع']);
+        $filter = Product::factory()->create(['name' => 'فلتر سبعة مراحل', 'kind' => 'device', 'price' => 1000, 'cost' => 600]);
+        $cartridge = Product::factory()->create(['name' => 'شمعة كربون', 'kind' => 'cartridge', 'price' => 50, 'cost' => 20]);
+        $empty = Product::factory()->create(['name' => 'منتج بلا رصيد', 'kind' => 'other']);
+
+        $this->stockIn($filter, $main, 3);
+        $this->stockIn($cartridge, $main, 10);
+        $this->stockIn($cartridge, $branch, 5);
+
+        $page = $this->get(route('products.report'))->assertOk()->assertSee('size: A4 portrait', false);
+        foreach (['name="q"', 'name="category"', 'name="kind"', 'name="status"', 'name="warehouse_id"', 'name="stock"', 'name="content"', 'name="sort"'] as $field) {
+            $page->assertSee($field, false);
+        }
+        $this->assertSame(3, $page->viewData('counts')['products']);
+        $this->assertSame(1, $page->viewData('counts')['out_of_stock']);
+        $this->assertSame(18, $page->viewData('byKind')->sum('pieces'));
+        $this->assertSame(3750.0, $page->viewData('byKind')->sum('value'));
+        $this->assertSame(18, $page->viewData('activity')['in']);
+
+        $branchOnly = $this->get(route('products.report', ['warehouse_id' => $branch->id]))->assertOk();
+        $this->assertSame(5, $branchOnly->viewData('byKind')->sum('pieces'));
+        $this->assertSame(5, (int) $branchOnly->viewData('rows')->firstWhere('id', $cartridge->id)->stock_quantity);
+
+        $this->get(route('products.report', ['stock' => 'out']))
+            ->assertOk()->assertSee('منتج بلا رصيد')->assertDontSee('شمعة كربون');
+
+        $sorted = $this->get(route('products.report', ['sort' => 'stock', 'dir' => 'desc']))->viewData('rows');
+        $this->assertTrue($sorted->first()->is($cartridge));
+
+        $this->get(route('products.report', ['content' => 'summary']))
+            ->assertOk()->assertDontSee('rpt-section-title">كشف المنتجات', false);
+    }
+
+    public function test_report_query_count_does_not_grow_with_the_catalog(): void
+    {
+        $warehouse = Warehouse::factory()->create();
+        Product::factory()->count(15)->create()->each(fn ($product) => $this->stockIn($product, $warehouse, 2));
+
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
+
+        $this->get(route('products.report'))->assertOk();
+
+        $this->assertLessThanOrEqual(14, $queries);
     }
 }

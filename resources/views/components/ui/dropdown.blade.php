@@ -15,7 +15,7 @@
 
     $trigger =
         $width .
-        ' h-11 rounded-xl bg-white border text-[13px] text-right flex items-center gap-2 transition cursor-pointer ' .
+        ' h-12 lg:h-11 rounded-xl bg-white border text-base lg:text-[13px] text-right flex items-center gap-2 transition cursor-pointer ' .
         ($icon ? 'pr-10 pl-9 ' : 'pr-3.5 pl-9 ') .
         ($error
             ? 'border-red-300 focus:ring-2 focus:ring-red-200'

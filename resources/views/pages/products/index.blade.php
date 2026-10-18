@@ -5,28 +5,24 @@
 @section('page-subtitle', 'كتالوج المنتجات والفلاتر')
 
 @php
-    $hasFilters = collect(request()->only(['q', 'category', 'status']))->filter()->isNotEmpty();
+    $hasFilters = collect(request()->only(['q', 'category', 'kind', 'status']))->filter()->isNotEmpty();
 @endphp
 
 @section('content')
     <x-ui.page-header icon="package" subtitle="كتالوج المنتجات والفلاتر" title="المنتجات">
         <x-slot:actions>
+            {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر القائمة --}}
+            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
+                href="{{ route('products.report', request()->only(['q', 'category', 'kind', 'status', 'sort', 'dir'])) }}"
+                target="_blank" rel="noopener">
+                <x-icon class="w-3.5 h-3.5" name="printer" />
+                تقرير المنتجات
+            </a>
             <x-ui.btn icon="package-plus" size="sm" variant="soft" :href="route('inventory.stock.create')">إضافة إلى
                 المخزن</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('products.create')">منتج جديد</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>
-
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
-        <x-ui.kpi hint="في الكتالوج" icon="package" label="إجمالي المنتجات" tone="blue" unit="منتج"
-            :value="number_format($stats['products'])" />
-        <x-ui.kpi hint="متاحة للبيع" icon="circle-check" label="منتجات مفعّلة" tone="green" unit="منتج"
-            :value="number_format($stats['active'])" />
-        <x-ui.kpi hint="في كل المستودعات" icon="boxes" label="إجمالي القطع" tone="purple" unit="قطعة"
-            :value="number_format($stats['pieces'])" />
-        <x-ui.kpi hint="بسعر البيع" icon="banknote" label="قيمة المخزون" tone="amber" unit="ج.م"
-            :value="number_format($stats['value'])" />
-    </div>
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
@@ -41,6 +37,8 @@
                 <x-ui.select icon="layers" name="category" :options="$categories" placeholder="كل التصنيفات"
                     :selected="request('category')" x-on:change="navigateForm($el.form)" />
             @endif
+            <x-ui.select icon="shapes" name="kind" :options="$kinds" placeholder="كل الأنواع"
+                :selected="request('kind')" x-on:change="navigateForm($el.form)" />
             <x-ui.select icon="circle-dot" name="status" :options="$statuses" placeholder="كل الحالات"
                 :selected="request('status')" x-on:change="navigateForm($el.form)" />
 
@@ -77,7 +75,8 @@
                                     <p class="text-[11px] text-gray-400" dir="ltr">{{ $product->sku }}</p>
                                 </a>
                             </td>
-                            <td class="px-4 py-3 text-[12px] text-gray-600">{{ $product->category ?? '—' }}</td>
+                            <td class="px-4 py-3 text-[12px] text-gray-600">{{ $product->category ?? '—' }}
+                                <span class="block text-[10px] text-gray-400">{{ $product->kind->label() }}</span></td>
                             <td class="px-4 py-3">
                                 <span class="text-[13px] font-bold text-gray-800">
                                     {{ number_format((float) $product->price) }}</span>

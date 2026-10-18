@@ -1,11 +1,11 @@
 @extends('layouts.app')
 
-@section('title', 'عقد بيع جديد')
-@section('page-title', 'عقد بيع جديد')
-@section('page-subtitle', 'إنشاء عقد بيع نقدي أو بالتقسيط')
+@section('title', 'عقد جديد')
+@section('page-title', 'عقد جديد')
+@section('page-subtitle', 'عقد بيع جهاز أو عقد صيانة — نقدي أو بالتقسيط')
 
 @section('content')
-    <x-ui.page-header icon="file-text" subtitle="إنشاء عقد بيع نقدي أو بالتقسيط" title="عقد بيع جديد">
+    <x-ui.page-header icon="file-text" subtitle="عقد بيع جهاز أو عقد صيانة — نقدي أو بالتقسيط" title="عقد جديد">
         <x-slot:actions>
             <x-ui.btn icon="arrow-right" size="sm" variant="soft" :href="route('contracts.index')">رجوع للقائمة</x-ui.btn>
         </x-slot:actions>

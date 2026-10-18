@@ -9,7 +9,6 @@ final readonly class MaintenancePlanItemData
 {
     public function __construct(
         public int $productId,
-        public int $intervalMonths,
         public string $replacementDate,
     ) {}
 
@@ -18,7 +17,6 @@ final readonly class MaintenancePlanItemData
     {
         return new self(
             productId: (int) $item['product_id'],
-            intervalMonths: (int) $item['interval_months'],
             replacementDate: $item['replacement_date'],
         );
     }

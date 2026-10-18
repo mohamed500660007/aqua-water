@@ -17,24 +17,28 @@ class Lookups
             [
                 'label' => 'المبيعات',
                 'items' => [
+                    ['route' => 'customers.index',    'icon' => 'users',        'label' => 'العملاء'],
                     ['route' => 'contracts.index',    'icon' => 'file-text',    'label' => 'عقود البيع'],
                     ['route' => 'installments.index', 'icon' => 'wallet',       'label' => 'الأقساط'],
-                    ['route' => 'customers.index',    'icon' => 'users',        'label' => 'العملاء'],
                 ],
             ],
             [
                 'label' => 'المنتجات والمخزون',
                 'items' => [
                     ['route' => 'products.index',                  'icon' => 'package', 'label' => 'المنتجات'],
-                    ['route' => 'inventory.employee-stocks.index', 'icon' => 'truck',    'label' => 'مخزون الموظفين'],
+                    ['route' => 'inventory.purchase-orders.index', 'icon' => 'store',   'label' => 'المخزن'],
+                    ['route' => 'inventory.employee-stocks.index', 'icon' => 'user-round-check', 'label' => 'مخزون الموظفين'],
+                    ['route' => 'inventory.custody-settlements.index', 'icon' => 'scale', 'label' => 'تسويات العهد'],
                 ],
             ],
             [
                 'label' => 'الصيانة والفريق',
                 'items' => [
                     ['route' => 'maintenance-plans.index',  'icon' => 'shield-check', 'label' => 'خطط الصيانة'],
-                    ['route' => 'maintenance-visits.index', 'icon' => 'wrench',       'label' => 'زيارات الصيانة'],
+                    ['route' => 'complaints.index',         'icon' => 'message-square-warning', 'label' => 'الشكاوى'],
+                    ['route' => 'gifts.index',              'icon' => 'gift',         'label' => 'الهدايا'],
                     ['route' => 'users.index',              'icon' => 'user-cog',     'label' => 'الموظفون'],
+                    ['route' => 'payroll.index',            'icon' => 'banknote',     'label' => 'المرتبات والعمولات'],
                 ],
             ],
         ];
@@ -104,6 +108,23 @@ class Lookups
         ];
     }
 
+    public static function religions(): array
+    {
+        return ['مسلم', 'مسيحي'];
+    }
+
+    /** مقترحات لخانة المؤهل الدراسي (يمكن كتابة غيرها) */
+    public static function qualifications(): array
+    {
+        return ['بدون مؤهل', 'إعدادية', 'دبلوم صنايع', 'دبلوم تجارة', 'دبلوم زراعة', 'ثانوية عامة', 'معهد فوق متوسط', 'بكالوريوس', 'ليسانس', 'دراسات عليا'];
+    }
+
+    /** مقترحات لصلة القرابة لجهة اتصال الطوارئ */
+    public static function relations(): array
+    {
+        return ['الأب', 'الأم', 'الزوج', 'الزوجة', 'الأخ', 'الأخت', 'الابن', 'الابنة', 'قريب', 'صديق'];
+    }
+
     public static function governorates(): array
     {
         return ['القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الغربية', 'الشرقية', 'أسيوط', 'بورسعيد', 'القليوبية'];
@@ -111,12 +132,12 @@ class Lookups
 
     public static function roles(): array
     {
-        return ['مدير النظام', 'مدير مبيعات', 'مندوب مبيعات', 'فني تركيب', 'خدمة عملاء', 'محاسب'];
+        return ['مدير النظام', 'مدير مبيعات', 'مندوب مبيعات', 'مندوبة', 'فني تركيب', 'محصل', 'سكرتارية', 'خدمة عملاء', 'محاسب'];
     }
 
     public static function departments(): array
     {
-        return ['الإدارة', 'المبيعات', 'العمليات', 'خدمة العملاء', 'المالية'];
+        return ['الإدارة', 'السكرتارية', 'المبيعات', 'الفنيين', 'الحسابات', 'المحصّلين', 'الجودة', 'الأرشيف'];
     }
 
     public static function branches(): array

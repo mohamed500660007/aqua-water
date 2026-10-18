@@ -5,7 +5,6 @@
         ? $plan->items
             ->map(fn($item) => [
                 'product_id' => (string) $item->product_id,
-                'interval_months' => (string) $item->interval_months,
                 'replacement_date' => $item->replacement_date->format('Y-m-d'),
             ])
             ->all()
@@ -68,14 +67,14 @@
 
         {{-- بنود الخطة --}}
         <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <div class="flex items-center justify-between gap-3 mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div class="flex items-center gap-2.5">
                     <span class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                         <x-icon class="w-[18px] h-[18px]" name="package" />
                     </span>
                     <div>
                         <h2 class="text-sm font-bold text-gray-800">بنود الخطة</h2>
-                        <p class="text-[11px] text-gray-400">المنتج + دورية الاستبدال بالأشهر + تاريخ الاستبدال</p>
+                        <p class="text-[11px] text-gray-400">المنتج + تاريخ الاستبدال</p>
                     </div>
                 </div>
                 <x-ui.btn icon="plus" size="sm" variant="soft" x-on:click="addItem()">إضافة بند</x-ui.btn>
@@ -87,7 +86,7 @@
                 <template x-bind:key="row.uid" x-for="(row, index) in items">
                     <div class="rounded-2xl border border-gray-100 p-3.5">
                         <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                            <div class="sm:col-span-5">
+                            <div class="sm:col-span-7">
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">المنتج</label>
                                 <div class="relative">
                                     <select
@@ -109,18 +108,8 @@
                                 </div>
                             </div>
 
-                            <div class="sm:col-span-3">
-                                <label class="block text-[11px] font-bold text-gray-500 mb-1.5">الدورية (شهر)</label>
-                                <input
-                                    class="w-full h-11 px-3.5 rounded-xl bg-white border text-[13px] text-gray-800 focus:ring-2 outline-none transition"
-                                    max="60" min="1" placeholder="6" type="number"
-                                    x-bind:class="row.errors.interval_months ? 'border-red-300 focus:ring-red-200' :
-                                        'border-gray-200 focus:ring-brand-green/50 focus:border-brand-green'"
-                                    x-bind:name="`items[${index}][interval_months]`" x-model="row.interval_months"
-                                    x-on:input="validateRow(row)" />
-                            </div>
 
-                            <div class="sm:col-span-3">
+                            <div class="sm:col-span-4">
                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">تاريخ الاستبدال</label>
                                 <input
                                     class="w-full h-11 px-3.5 rounded-xl bg-white border text-[13px] text-gray-800 focus:ring-2 outline-none transition"
@@ -185,12 +174,11 @@
         function maintenancePlanForm(config) {
             let uid = 0;
 
-            const blankRow = () => ({uid: uid++, product_id: '', interval_months: '', replacement_date: '', errors: {}});
+            const blankRow = () => ({uid: uid++, product_id: '', replacement_date: '', errors: {}});
 
             const toRow = item => ({
                 uid: uid++,
                 product_id: String(item.product_id || ''),
-                interval_months: String(item.interval_months || ''),
                 replacement_date: item.replacement_date || '',
                 errors: {}
             });
@@ -231,12 +219,8 @@
                 },
 
                 validateRow(row) {
-                    const months = Number(row.interval_months);
-
                     row.errors = {
                         product_id: row.product_id ? '' : 'اختر المنتج.',
-                        interval_months: Number.isInteger(months) && months >= 1 && months <= 60 ? '' :
-                            'الدورية يجب أن تكون بين 1 و 60 شهرًا.',
                         replacement_date: row.replacement_date ? '' : 'حدّد تاريخ الاستبدال.'
                     };
 

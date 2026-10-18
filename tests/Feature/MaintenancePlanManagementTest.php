@@ -32,8 +32,8 @@ class MaintenancePlanManagementTest extends TestCase
             'duration_months' => 12,
             'status' => MaintenancePlanStatus::Active->value,
             'items' => [
-                ['product_id' => $this->filter->id, 'interval_months' => 3, 'replacement_date' => '2026-12-01'],
-                ['product_id' => $this->membrane->id, 'interval_months' => 12, 'replacement_date' => '2027-08-01'],
+                ['product_id' => $this->filter->id, 'replacement_date' => '2026-12-01'],
+                ['product_id' => $this->membrane->id, 'replacement_date' => '2027-08-01'],
             ],
         ], $overrides);
     }
@@ -63,7 +63,6 @@ class MaintenancePlanManagementTest extends TestCase
         $this->assertDatabaseHas('maintenance_plan_items', [
             'maintenance_plan_id' => $plan->id,
             'product_id' => $this->filter->id,
-            'interval_months' => 3,
         ]);
     }
 
@@ -79,18 +78,17 @@ class MaintenancePlanManagementTest extends TestCase
     {
         $this->post(route('maintenance-plans.store'), $this->validPayload([
             'items' => [
-                ['product_id' => $this->filter->id, 'interval_months' => 0, 'replacement_date' => 'ليس تاريخًا'],
-                ['product_id' => $this->filter->id, 'interval_months' => 3, 'replacement_date' => '2026-12-01'],
+                ['product_id' => $this->filter->id, 'replacement_date' => 'ليس تاريخًا'],
+                ['product_id' => $this->filter->id, 'replacement_date' => '2026-12-01'],
             ],
         ]))->assertSessionHasErrors([
-            'items.0.interval_months',
             'items.0.replacement_date',
             'items.0.product_id',
         ]);
 
         $this->post(route('maintenance-plans.store'), $this->validPayload([
             'items' => [
-                ['product_id' => 9999, 'interval_months' => 3, 'replacement_date' => '2026-12-01'],
+                ['product_id' => 9999, 'replacement_date' => '2026-12-01'],
             ],
         ]))->assertSessionHasErrors('items.0.product_id');
 
@@ -101,8 +99,8 @@ class MaintenancePlanManagementTest extends TestCase
     {
         $this->post(route('maintenance-plans.store'), $this->validPayload([
             'items' => [
-                ['product_id' => $this->filter->id, 'interval_months' => 3, 'replacement_date' => '2026-12-01'],
-                ['product_id' => '', 'interval_months' => '', 'replacement_date' => ''],
+                ['product_id' => $this->filter->id, 'replacement_date' => '2026-12-01'],
+                ['product_id' => '', 'replacement_date' => ''],
             ],
         ]))->assertSessionHasNoErrors();
 
@@ -118,7 +116,7 @@ class MaintenancePlanManagementTest extends TestCase
             'name' => 'باقة معدّلة',
             'status' => MaintenancePlanStatus::Inactive->value,
             'items' => [
-                ['product_id' => $this->membrane->id, 'interval_months' => 6, 'replacement_date' => '2027-01-01'],
+                ['product_id' => $this->membrane->id, 'replacement_date' => '2027-01-01'],
             ],
         ]))->assertRedirect(route('maintenance-plans.show', $plan));
 
@@ -128,7 +126,8 @@ class MaintenancePlanManagementTest extends TestCase
         $this->assertSame(MaintenancePlanStatus::Inactive, $plan->status);
         $this->assertCount(1, $plan->items);
         $this->assertSame($this->membrane->id, $plan->items->first()->product_id);
-        $this->assertSame(6, $plan->items->first()->interval_months);
+        $this->assertSame('2027-01-01', $plan->items->first()->replacement_date->format('Y-m-d'));
+        $this->assertNull($plan->items->first()->interval_months);
         $this->assertDatabaseMissing('maintenance_plan_items', [
             'maintenance_plan_id' => $plan->id,
             'product_id' => $this->filter->id,

@@ -41,17 +41,17 @@
                 <x-ui.field col="sm:col-span-2" label="الاسم بالكامل" name="name" placeholder="مثال: أحمد سيد عبد الرحمن"
                     :value="$customer?->name" client-error="errors.name" required x-on:blur="check($el)" x-on:input="check($el)" />
 
-                <x-ui.field label="كود العميل" name="code" placeholder="يُولَّد تلقائيًا إذا تُرك فارغًا"
-                    :value="$customer?->code" client-error="errors.code" hint="يجب أن يكون فريدًا داخل النظام"
-                    x-on:blur="check($el)" x-on:input="check($el)" />
-
                 <x-ui.field label="الرقم القومي" name="national_id" placeholder="14 رقمًا" :value="$customer?->national_id"
                     client-error="errors.national_id" inputmode="numeric" x-on:blur="check($el)" x-on:input="check($el)" />
 
                 <x-ui.field label="الحالة" name="status" type="select" :options="$statuses"
                     :value="$customer?->status?->value ?? $defaultStatus" placeholder="اختر الحالة" required />
 
-                <x-ui.date-picker label="تاريخ التسجيل" name="registered_at" :value="$registeredAt" required />
+                <x-ui.field label="نوع العميل" name="origin" type="select" :options="$origins"
+                    :value="$customer?->origin?->value ?? 'internal'" required
+                    hint="خارجي: جهازه من شركة أخرى ويتعامل معنا في الصيانة فقط" />
+
+                <x-ui.date-picker label="تاريخ التركيب" name="registered_at" :value="$registeredAt" required />
             </div>
         </section>
 
@@ -205,9 +205,6 @@
                         if (!value.trim()) return 'اسم العميل مطلوب.';
                         if (value.trim().length > 150) return 'اسم العميل طويل جدًا.';
                         return '';
-                    },
-                    code(value) {
-                        return value.trim().length > 32 ? 'كود العميل يجب ألا يزيد عن 32 حرفًا.' : '';
                     },
                     national_id(value) {
                         if (!value.trim()) return '';

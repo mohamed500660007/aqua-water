@@ -36,6 +36,9 @@
             <x-ui.field label="التصنيف" name="category" placeholder="مثال: فلاتر منزلية" :value="$product?->category"
                 list="categoryOptions" />
 
+            <x-ui.field label="نوع المنتج" name="kind" type="select" :options="$kinds"
+                :value="$product?->kind?->value ?? 'other'" hint="يحدد كيف يظهر المنتج في التقارير: أجهزة مركّبة أو شمع" required />
+
             <x-ui.field label="سعر البيع (ج.م)" name="price" type="number" min="0" step="0.01" placeholder="0"
                 :value="$product?->price" client-error="errors.price" required x-on:blur="check($el)" x-on:input="check($el)" />
 

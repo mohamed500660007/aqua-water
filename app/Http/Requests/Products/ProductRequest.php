@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Products;
 
 use App\Domain\Products\Data\ProductData;
+use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Enums\ProductStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,6 +18,7 @@ class ProductRequest extends FormRequest
             'sku' => ['required', 'string', 'max:32', Rule::unique('products', 'sku')->ignore($product)],
             'name' => ['required', 'string', 'max:150'],
             'category' => ['nullable', 'string', 'max:100'],
+            'kind' => ['required', Rule::enum(ProductKind::class)],
             'price' => ['required', 'numeric', 'min:0', 'max:9999999'],
             'cost' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
             'warranty' => ['nullable', 'string', 'max:50'],
@@ -36,6 +38,7 @@ class ProductRequest extends FormRequest
             'name' => trim((string) $this->input('name')) ?: null,
             'category' => trim((string) $this->input('category')) ?: null,
             'warranty' => trim((string) $this->input('warranty')) ?: null,
+            'kind' => $this->input('kind') ?: ProductKind::Other->value,
             // حقل الحالة مخفي عند إنشاء منتج جديد ويُنشأ دائمًا بحالة "نشط"
             'status' => $this->input('status') ?: ProductStatus::Active->value,
         ]);
@@ -47,6 +50,7 @@ class ProductRequest extends FormRequest
             'sku' => 'كود المنتج',
             'name' => 'اسم المنتج',
             'category' => 'التصنيف',
+            'kind' => 'نوع المنتج',
             'price' => 'سعر البيع',
             'cost' => 'سعر التكلفة',
             'warranty' => 'الضمان',

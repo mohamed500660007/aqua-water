@@ -62,7 +62,6 @@
                         <thead class="bg-gray-50/70 border-b border-gray-100">
                             <tr>
                                 <x-ui.th>المنتج</x-ui.th>
-                                <x-ui.th>الدورية</x-ui.th>
                                 <x-ui.th>تاريخ الاستبدال</x-ui.th>
                                 <x-ui.th align="left">السعر الحالي</x-ui.th>
                             </tr>
@@ -75,8 +74,6 @@
                                             {{ $item->product?->name ?? 'منتج محذوف' }}</p>
                                         <p class="text-[11px] text-gray-400" dir="ltr">{{ $item->product?->sku }}</p>
                                     </td>
-                                    <td class="px-4 py-3 text-[12px] font-semibold text-gray-700">
-                                        كل {{ $item->interval_months }} شهر</td>
                                     <td class="px-4 py-3 text-[12px] text-gray-600" dir="ltr">
                                         {{ $item->replacement_date->format('Y-m-d') }}</td>
                                     <td class="px-4 py-3 text-left">

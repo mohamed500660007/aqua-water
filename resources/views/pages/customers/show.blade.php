@@ -9,18 +9,6 @@
         <x-slot:actions>
             <x-ui.btn icon="arrow-right" size="sm" variant="soft" :href="route('customers.index')">رجوع للقائمة</x-ui.btn>
             <x-ui.btn icon="pencil" size="sm" :href="route('customers.edit', $customer)">تعديل البيانات</x-ui.btn>
-
-            <form action="{{ route('customers.destroy', $customer) }}" method="POST" x-data>
-                @csrf
-                @method('DELETE')
-                <x-ui.btn icon="trash-2" size="sm" variant="danger"
-                    x-on:click="$store.confirm.ask({
-                        title: 'حذف العميل',
-                        message: {{ Js::from('سيتم حذف «' . $customer->name . '» مع أرقام هاتفه من قائمة العملاء.') }},
-                        label: 'حذف',
-                        onOk: () => $root.requestSubmit()
-                    })">حذف</x-ui.btn>
-            </form>
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -38,7 +26,12 @@
 
                 <div class="flex items-center justify-between gap-3 mb-4">
                     <span class="text-[12px] text-gray-400">الحالة</span>
-                    <x-ui.badge :status="$customer->status->label()" dot />
+                    <x-ui.badge :tone="$customer->status->tone()" dot>{{ $customer->status->label() }}</x-ui.badge>
+                </div>
+
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <span class="text-[12px] text-gray-400">نوع العميل</span>
+                    <x-ui.badge :tone="$customer->origin->tone()">{{ $customer->origin->label() }}</x-ui.badge>
                 </div>
 
                 <x-ui.detail-row label="الرقم القومي" :value="$customer->national_id ?? '—'" />

@@ -5,23 +5,35 @@
 @section('page-subtitle', 'إدارة قاعدة عملاء أكوا ووتر')
 
 @php
-    $hasFilters = collect(request()->only(['q', 'status', 'governorate', 'center', 'village']))->filter()->isNotEmpty();
+    $hasFilters = collect(request()->only(['q', 'status', 'origin', 'governorate', 'center', 'village']))->filter()->isNotEmpty();
 @endphp
 
 @section('content')
     <x-ui.page-header icon="users" subtitle="إدارة قاعدة العملاء" title="العملاء">
         <x-slot:actions>
+            {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر القائمة --}}
+            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
+                href="{{ route('customers.report', request()->only(['q', 'status', 'origin', 'governorate', 'center', 'village', 'sort', 'dir'])) }}"
+                target="_blank" rel="noopener">
+                <x-icon class="w-3.5 h-3.5" name="printer" />
+                تقرير العملاء
+            </a>
+            <x-ui.btn icon="file-spreadsheet" size="sm" variant="soft" :href="route('customers.import.create')">استيراد من إكسيل</x-ui.btn>
             <x-ui.btn icon="user-plus" size="sm" :href="route('customers.create')">عميل جديد</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-3 gap-2.5 mb-4 lg:mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4 lg:mb-6">
         <x-ui.kpi compact icon="users" label="إجمالي العملاء" tone="blue" unit="عميل"
             :value="number_format($stats['total'])" />
-        <x-ui.kpi compact icon="user-check" label="عملاء نشطون" tone="green" unit="عميل"
+        <x-ui.kpi compact icon="user-check" label="نشط" tone="green" unit="عميل"
             :value="number_format($stats['active'])" />
-        <x-ui.kpi compact icon="user-x" label="غير نشطين" tone="gray" unit="عميل"
+        <x-ui.kpi compact icon="user-x" label="غير نشط" tone="gray" unit="عميل"
             :value="number_format($stats['inactive'])" />
+        <x-ui.kpi compact icon="undo-2" label="مرتجع" tone="amber" unit="عميل"
+            :value="number_format($stats['returned'])" />
+        <x-ui.kpi compact icon="scale" label="شؤون قانونية" tone="red" unit="عميل"
+            :value="number_format($stats['legal'])" />
     </div>
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -36,6 +48,8 @@
 
             <x-ui.select icon="circle-dot" name="status" :options="$statuses" placeholder="كل الحالات"
                 :selected="request('status')" x-on:change="navigateForm($el.form)" />
+            <x-ui.select icon="house-plug" name="origin" :options="$origins" placeholder="داخلي وخارجي"
+                :selected="request('origin')" x-on:change="navigateForm($el.form)" />
             <x-ui.select icon="map-pin" name="governorate" :options="$governorates" placeholder="كل المحافظات"
                 :selected="request('governorate')" x-on:change="navigateForm($el.form)" />
             @if ($centers)
@@ -58,7 +72,8 @@
             @endif
         </form>
 
-        <div class="overflow-x-auto scrollbar-hide">
+        {{-- عرض العميل يفتح لوحة جانبية بكل تفاصيله بدل الانتقال لصفحة أخرى --}}
+        <div class="overflow-x-auto scrollbar-hide" x-data>
             <table class="w-full min-w-[880px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
@@ -75,14 +90,15 @@
                     @foreach ($customers as $customer)
                         <tr class="hover:bg-gray-50/70 transition-colors">
                             <td class="px-4 py-3">
-                                <a class="flex items-center gap-3 min-w-0" href="{{ route('customers.show', $customer) }}" wire:navigate>
+                                <button class="flex items-center gap-3 min-w-0 text-right" type="button"
+                                    x-on:click="$store.drawer.show(@js(route('customers.panel', $customer)))">
                                     <x-ui.avatar :name="$customer->name" size="w-10 h-10" />
                                     <div class="min-w-0">
                                         <p class="text-[13px] font-bold text-gray-800 truncate">{{ $customer->name }}</p>
                                         <p class="text-[11px] text-gray-400" dir="ltr">
                                             {{ $customer->national_id ?? '—' }}</p>
                                     </div>
-                                </a>
+                                </button>
                             </td>
                             <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $customer->code }}</td>
                             <td class="px-4 py-3">
@@ -100,22 +116,17 @@
                             </td>
                             <td class="px-4 py-3 text-[12px] font-semibold text-gray-700" dir="ltr">
                                 {{ $customer->registered_at?->format('Y-m-d') }}</td>
-                            <td class="px-4 py-3"><x-ui.badge :status="$customer->status->label()" dot /></td>
+                            <td class="px-4 py-3">
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <x-ui.badge :tone="$customer->status->tone()" dot>{{ $customer->status->label() }}</x-ui.badge>
+                                    <x-ui.badge :tone="$customer->origin->tone()">{{ $customer->origin->label() }}</x-ui.badge>
+                                </div>
+                            </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
-                                    <x-ui.icon-btn icon="eye" label="عرض" :href="route('customers.show', $customer)" />
+                                    <x-ui.icon-btn icon="eye" label="عرض" tone="primary"
+                                        x-on:click="$store.drawer.show({{ Js::from(route('customers.panel', $customer)) }})" />
                                     <x-ui.icon-btn icon="pencil" label="تعديل" :href="route('customers.edit', $customer)" />
-                                    <form action="{{ route('customers.destroy', $customer) }}" method="POST" x-data>
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-ui.icon-btn icon="trash-2" label="حذف" tone="danger"
-                                            x-on:click="$store.confirm.ask({
-                                                title: 'حذف العميل',
-                                                message: {{ Js::from('سيتم حذف «' . $customer->name . '» مع أرقام هاتفه من قائمة العملاء.') }},
-                                                label: 'حذف',
-                                                onOk: () => $root.requestSubmit()
-                                            })" />
-                                    </form>
                                 </div>
                             </td>
                         </tr>

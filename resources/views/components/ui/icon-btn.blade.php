@@ -1,4 +1,5 @@
-@props(['icon', 'tone' => 'default', 'label' => '', 'href' => null])
+{{-- document: رابط لصفحة طباعة مستقلة (إيصال، قسيمة) — يُفتح في تبويب جديد بتحميل كامل لا بتنقّل SPA --}}
+@props(['icon', 'tone' => 'default', 'label' => '', 'href' => null, 'document' => false])
 
 @php
     $tones = [
@@ -8,10 +9,11 @@
     ];
 @endphp
 
-@php($classes = 'w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition-colors active:scale-90 ' . ($tones[$tone] ?? $tones['default']))
+@php($classes = 'w-11 h-11 shrink-0 rounded-xl flex items-center justify-center transition-colors active:scale-90 ' . ($tones[$tone] ?? $tones['default']))
 
 @if ($href)
-    <a aria-label="{{ $label }}" href="{{ $href }}" title="{{ $label }}" wire:navigate
+    <a aria-label="{{ $label }}" href="{{ $href }}" title="{{ $label }}"
+        @if ($document) target="_blank" rel="noopener" @else wire:navigate @endif
         {{ $attributes->merge(['class' => $classes]) }}>
         <x-icon class="w-[17px] h-[17px]" :name="$icon" />
     </a>

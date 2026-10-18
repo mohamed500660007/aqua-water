@@ -23,9 +23,9 @@ class MaintenancePlanSeeder extends Seeder
                 'description' => 'استبدال الشمعات والممبرين خلال سنة كاملة',
                 'duration_months' => 12,
                 'items' => [
-                    ['sku' => 'AQ-CTN-10', 'interval_months' => 3, 'months_ahead' => 3],
-                    ['sku' => 'AQ-CRB-BL', 'interval_months' => 6, 'months_ahead' => 6],
-                    ['sku' => 'AQ-MEM-100', 'interval_months' => 12, 'months_ahead' => 12],
+                    ['sku' => 'AQ-CTN-10', 'months_ahead' => 3],
+                    ['sku' => 'AQ-CRB-BL', 'months_ahead' => 6],
+                    ['sku' => 'AQ-MEM-100', 'months_ahead' => 12],
                 ],
             ],
             [
@@ -33,8 +33,8 @@ class MaintenancePlanSeeder extends Seeder
                 'description' => 'استبدال الشمعات الأساسية كل ستة أشهر',
                 'duration_months' => 6,
                 'items' => [
-                    ['sku' => 'AQ-CTN-10', 'interval_months' => 3, 'months_ahead' => 3],
-                    ['sku' => 'AQ-ALK-01', 'interval_months' => 6, 'months_ahead' => 6],
+                    ['sku' => 'AQ-CTN-10', 'months_ahead' => 3],
+                    ['sku' => 'AQ-ALK-01', 'months_ahead' => 6],
                 ],
             ],
         ];
@@ -59,7 +59,6 @@ class MaintenancePlanSeeder extends Seeder
                 $plan->items()->updateOrCreate(
                     ['product_id' => $product->id],
                     [
-                        'interval_months' => $item['interval_months'],
                         'replacement_date' => now()->addMonths($item['months_ahead'])->toDateString(),
                     ],
                 );

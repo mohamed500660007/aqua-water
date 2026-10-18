@@ -30,7 +30,6 @@ class MaintenancePlanFactory extends Factory
             foreach ($items as $item) {
                 $plan->items()->create([
                     'product_id' => $item['product_id'],
-                    'interval_months' => $item['interval_months'] ?? 6,
                     'replacement_date' => $item['replacement_date'] ?? now()->addMonths(6)->toDateString(),
                 ]);
             }

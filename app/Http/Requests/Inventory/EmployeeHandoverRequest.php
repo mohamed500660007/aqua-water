@@ -4,6 +4,7 @@ namespace App\Http\Requests\Inventory;
 
 use App\Domain\Inventory\Data\EmployeeHandoverData;
 use App\Domain\Inventory\Services\StockService;
+use App\Domain\Users\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -15,7 +16,7 @@ class EmployeeHandoverRequest extends FormRequest
         return [
             'user_id' => [
                 'required',
-                Rule::exists('users', 'id')->whereIn('role', ['مندوب مبيعات', 'فني تركيب'])->whereNull('deleted_at'),
+                Rule::exists('users', 'id')->whereIn('role', User::CUSTODY_ROLES)->whereNull('deleted_at'),
             ],
             'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'moved_at' => ['required', 'date', 'before_or_equal:today'],

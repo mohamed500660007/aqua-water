@@ -2,7 +2,7 @@
 
 @section('title', $contract->code)
 @section('page-title', $contract->code)
-@section('page-subtitle', 'تفاصيل عقد البيع')
+@section('page-subtitle', 'تفاصيل ' . $contract->kind->label())
 
 @section('content')
     <x-ui.page-header icon="file-text" :subtitle="$contract->customer?->name" :title="'عقد ' . $contract->code">
@@ -10,17 +10,31 @@
             <x-ui.btn icon="arrow-right" size="sm" variant="soft" :href="route('contracts.index')">رجوع للقائمة</x-ui.btn>
             <x-ui.btn icon="pencil" size="sm" :href="route('contracts.edit', $contract)">تعديل العقد</x-ui.btn>
 
-            <form action="{{ route('contracts.destroy', $contract) }}" method="POST" x-data>
-                @csrf
-                @method('DELETE')
-                <x-ui.btn icon="trash-2" size="sm" variant="danger"
-                    x-on:click="$store.confirm.ask({
-                        title: 'حذف العقد',
-                        message: {{ Js::from('سيتم حذف العقد ' . $contract->code . ' وإعادة كمياته إلى المخزن.') }},
-                        label: 'حذف',
-                        onOk: () => $root.requestSubmit()
-                    })">حذف</x-ui.btn>
-            </form>
+            @if ($contract->isReferredToLegal())
+                <form action="{{ route('contracts.legal.destroy', $contract) }}" method="POST" x-data>
+                    @csrf
+                    @method('DELETE')
+                    <x-ui.btn icon="undo-2" size="sm" variant="soft"
+                        x-on:click="$store.confirm.ask({
+                            title: 'إلغاء التحويل للشؤون القانونية',
+                            message: 'سيعود العقد إلى المتأخرات العادية.',
+                            label: 'إلغاء التحويل',
+                            onOk: () => $root.requestSubmit()
+                        })">إلغاء التحويل القانوني</x-ui.btn>
+                </form>
+            @elseif ((float) $contract->remaining > 0)
+                <form action="{{ route('contracts.legal.store', $contract) }}" method="POST" x-data>
+                    @csrf
+                    <x-ui.btn icon="scale" size="sm" variant="dark"
+                        x-on:click="$store.confirm.ask({
+                            title: 'تحويل للشؤون القانونية',
+                            message: {{ Js::from('سيُنقل العقد ' . $contract->code . ' من المتأخرات العادية إلى تقرير الشؤون القانونية بتاريخ اليوم.') }},
+                            label: 'تحويل',
+                            onOk: () => $root.requestSubmit()
+                        })">تحويل للقانونية</x-ui.btn>
+                </form>
+            @endif
+
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -38,8 +52,24 @@
                             <p class="text-[12px] text-gray-400" dir="ltr">{{ $contract->customer?->code }}</p>
                         </div>
                     </div>
-                    <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
+                    <div class="flex flex-wrap items-center justify-end gap-1">
+                        <x-ui.badge :tone="$contract->kind->tone()">{{ $contract->kind->label() }}</x-ui.badge>
+                        <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
+                        @unless ($contract->stock_tracked)
+                            <x-ui.badge tone="gray" title="عقد قديم مستورد من إكسيل — لا يخصم ولا يرد أي كمية من المخزون">عقد قديم مستورد</x-ui.badge>
+                        @endunless
+                    </div>
                 </div>
+
+                @if ($contract->isReferredToLegal())
+                    <div class="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 flex items-center gap-2.5">
+                        <x-icon class="w-4 h-4 text-red-500" name="scale" />
+                        <p class="text-[12px] font-bold text-red-600">
+                            محوّل للشؤون القانونية منذ
+                            <span dir="ltr">{{ $contract->legal_referred_at->format('Y-m-d') }}</span>
+                        </p>
+                    </div>
+                @endif
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                     <x-ui.detail-row label="تاريخ العقد" :value="$contract->contract_date->format('Y-m-d')" />
@@ -63,6 +93,7 @@
             </div>
 
             {{-- بنود العقد --}}
+            @unless ($contract->isMaintenance())
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div class="flex items-center justify-between gap-3 p-5 border-b border-gray-100">
                     <div class="flex items-center gap-2.5">
@@ -101,6 +132,7 @@
                     </table>
                 </div>
             </div>
+            @endunless
 
             {{-- جدول الأقساط --}}
             @if ($contract->installments->isNotEmpty())
@@ -156,7 +188,9 @@
                         @foreach ($contract->maintenanceItems as $item)
                             <div class="flex items-center gap-3 px-5 py-3">
                                 <span class="flex-1 text-[13px] font-bold text-gray-800">{{ $item->product_name }}</span>
-                                <span class="text-[11px] text-gray-400">كل {{ $item->interval_months }} شهر</span>
+                                @if ($item->interval_months)
+                                    <span class="text-[11px] text-gray-400">كل {{ $item->interval_months }} شهر</span>
+                                @endif
                                 <span class="text-[12px] text-gray-600" dir="ltr">
                                     {{ $item->replacement_date->format('Y-m-d') }}</span>
                             </div>
@@ -201,6 +235,7 @@
                 </div>
             @endif
 
+            @unless ($contract->isMaintenance())
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
                 <h2 class="text-sm font-bold text-gray-800 mb-3">أثر العقد على المخزون</h2>
 
@@ -209,6 +244,7 @@
                     وأي تعديل على الكميات يُسجَّل كحركة جديدة.
                 </p>
             </div>
+            @endunless
         </div>
     </div>
 @endsection

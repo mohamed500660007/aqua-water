@@ -14,7 +14,8 @@
                 name="q" placeholder="ابحث عن عميل بالاسم أو الهاتف..." type="search" />
         </form>
 
-        <x-ui.btn icon="plus" size="sm" :href="route('contracts.create')">عقد جديد</x-ui.btn>
+        {{-- أزرار الصفحة الحالية (تدفعها x-ui.page-header) --}}
+        @stack('page-actions')
     </div>
 </header>
 {{-- نهاية: ترويسة سطح المكتب --}}

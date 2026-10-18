@@ -35,6 +35,7 @@ class ProductService
             'sku' => $data->sku,
             'name' => $data->name,
             'category' => $data->category,
+            'kind' => $data->kind,
             'price' => $data->price,
             'cost' => $data->cost,
             'warranty' => $data->warranty,

@@ -49,7 +49,7 @@
                             x-bind:class="{ 'nav-item-active': $store.nav.isActive(@js($href)), 'bg-gray-50': !$store.nav.isActive(@js($href)), 'text-gray-500': !$store.nav.isActive(@js($href)) }">
                             <x-icon class="w-[19px] h-[19px]" :name="$item['icon']" />
                         </span>
-                        <span class="text-[10px] font-semibold text-gray-600 leading-tight text-center truncate max-w-full">
+                        <span class="text-xs font-semibold text-gray-600 leading-tight text-center truncate max-w-full">
                             {{ $item['label'] }}</span>
                     </a>
                 @endforeach
@@ -66,7 +66,7 @@
                     x-bind:class="{ 'nav-item-active': $store.nav.isActive(@js($href)), 'text-gray-400': !$store.nav.isActive(@js($href)), 'active:bg-gray-50': !$store.nav.isActive(@js($href)) }"
                     data-nav-href="{{ $href }}" href="{{ $href }}" wire:navigate x-on:click="$store.more.close()">
                     <x-icon class="w-[21px] h-[21px] shrink-0" :name="$item['icon']" />
-                    <span class="text-[9.5px] font-semibold leading-none truncate max-w-full px-0.5">{{ $item['label'] }}</span>
+                    <span class="text-xs font-semibold leading-none truncate max-w-full px-0.5">{{ $item['label'] }}</span>
                 </a>
             @endforeach
 
@@ -84,7 +84,7 @@
                     x-bind:class="$store.more.open ? 'rotate-[135deg]' : ''">
                     <x-icon class="w-[21px] h-[21px]" name="plus" />
                 </span>
-                <span class="text-[9.5px] font-semibold leading-none truncate max-w-full px-0.5"
+                <span class="text-xs font-semibold leading-none truncate max-w-full px-0.5"
                     x-text="$store.more.open ? 'إغلاق' : 'المزيد'">المزيد</span>
             </button>
         </div>

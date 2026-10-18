@@ -7,12 +7,13 @@ use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Maintenance\Models\MaintenancePlan;
-use App\Domain\Maintenance\Services\MaintenanceVisitService;
 use App\Domain\Sales\Data\CollectInstallmentData;
 use App\Domain\Sales\Data\SalesContractData;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Sales\Models\SalesContract;
 use App\Domain\Sales\Models\SalesContractInstallment;
+use App\Domain\Sales\Models\SalesContractItem;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -21,25 +22,30 @@ class SalesContractService
 {
     private const CODE_PREFIX = 'AQW-';
 
+    private const MAINTENANCE_CODE_PREFIX = 'AQM-';
+
     public function __construct(
         private readonly ContractPricing $pricing,
         private readonly StockService $stock,
         private readonly EmployeeStockService $employeeStock,
-        private readonly MaintenanceVisitService $maintenanceVisits,
     ) {}
 
-    public function create(SalesContractData $data): SalesContract
+    /**
+     * @param  bool  $trackStock  false للعقود القديمة المستوردة: أجهزتها سُلِّمت قبل النظام فلا تمس المخزون أبدًا
+     */
+    public function create(SalesContractData $data, bool $trackStock = true): SalesContract
     {
-        return DB::transaction(function () use ($data) {
-            $pricing = $this->pricing->calculate($data->items);
+        return DB::transaction(function () use ($data, $trackStock) {
+            $pricing = $this->pricing->forContract($data);
 
             $contract = SalesContract::create($this->attributes($data, $pricing['subtotal']) + [
-                'code' => $this->nextCode(Carbon::parse($data->contractDate)),
+                'code' => $this->nextCode(Carbon::parse($data->contractDate), $data->isMaintenance()),
+                'stock_tracked' => $trackStock,
             ]);
 
-            $this->syncItems($contract, $pricing['lines']);
-            $this->syncInstallments($contract);
-            $this->syncMaintenanceSnapshot($contract, $data->maintenancePlanId);
+            $this->syncItems($contract, $pricing['lines'], isNew: true);
+            $this->syncInstallments($contract, isNew: true);
+            $this->syncMaintenanceSnapshot($contract, $data->maintenancePlanId, isNew: true);
             $this->applyStock($contract, previousQuantities: [], previousSource: null);
 
             return $contract;
@@ -49,10 +55,10 @@ class SalesContractService
     public function update(SalesContract $contract, SalesContractData $data): SalesContract
     {
         return DB::transaction(function () use ($contract, $data) {
-            $previousQuantities = $this->reservedQuantities($contract);
+            $previousQuantities = $contract->reservedQuantitiesByProduct();
             $previousSource = $this->sourceContext($contract);
             $previousPlanId = $contract->maintenance_plan_id;
-            $pricing = $this->pricing->calculate($data->items);
+            $pricing = $this->pricing->forContract($data);
 
             $contract->update($this->attributes($data, $pricing['subtotal']));
 
@@ -68,6 +74,12 @@ class SalesContractService
 
             return $contract;
         });
+    }
+
+    /** ملاحظة القسط تُطبع على إيصاله — قابلة للتعديل قبل التحصيل (دفتر الإيصالات) وبعده */
+    public function updateInstallmentNote(SalesContractInstallment $installment, ?string $note): void
+    {
+        $installment->update(['note' => $note]);
     }
 
     /**
@@ -147,30 +159,18 @@ class SalesContractService
         });
     }
 
-    /** حذف العقد يعيد الكميات المحجوزة إلى مصدرها (مخزن أو موظف) عبر حركات وارد */
-    public function delete(SalesContract $contract): void
+    /** تحويل العقد للشؤون القانونية يُخرجه من المتأخرات العادية إلى تقرير القانونية */
+    public function referToLegal(SalesContract $contract, string $date): void
     {
-        DB::transaction(function () use ($contract) {
-            $source = $this->sourceContext($contract);
-
-            foreach ($this->reservedQuantities($contract) as $productId => $quantity) {
-                $this->moveStock($contract, $source, $productId, $quantity, StockMovementType::In, 'إلغاء عقد');
-            }
-
-            // زيارات الصيانة تُحذف عبر خدمتها حتى تُرَد القطعة المخصومة إلى مصدرها،
-            // لا بحذف صف عادي يُغفل عكس أثر المخزون.
-            $contract->maintenanceVisits->each(fn ($visit) => $this->maintenanceVisits->delete($visit));
-
-            // العقد حذف ناعم، لكن بنوده وأقساطه لا تُحذف تلقائيًا معه (لا soft delete
-            // عندها) — تبقى بلا فائدة ولا طريقة للوصول إليها، فتُحذف صراحة هنا.
-            $contract->items()->delete();
-            $contract->installments()->delete();
-            $contract->maintenanceItems()->delete();
-
-            $contract->delete();
-        });
+        $contract->update(['legal_referred_at' => $date]);
     }
 
+    public function withdrawFromLegal(SalesContract $contract): void
+    {
+        $contract->update(['legal_referred_at' => null]);
+    }
+
+    /** حذف العقد يعيد الكميات المحجوزة إلى مصدرها (مخزن أو موظف) عبر حركات وارد */
     /** @return array<string, mixed> */
     private function attributes(SalesContractData $data, float $subtotal): array
     {
@@ -182,6 +182,7 @@ class SalesContractService
         $installmentsCount = $data->installmentsCount;
 
         return [
+            'kind' => $data->kind,
             'customer_id' => $data->customerId,
             'sales_rep_id' => $data->salesRepId,
             'installer_id' => $data->installerId,
@@ -209,23 +210,52 @@ class SalesContractService
     }
 
     /** @param  list<array<string, mixed>>  $lines */
-    private function syncItems(SalesContract $contract, array $lines): void
+    private function syncItems(SalesContract $contract, array $lines, bool $isNew = false): void
     {
-        $contract->items()->delete();
-        $contract->items()->createMany($lines);
+        $this->clearExisting($contract, 'items', $isNew);
+        $this->insertChildren(SalesContractItem::class, $contract, $lines);
         $contract->unsetRelation('items');
     }
 
-    /** جدول الأقساط يُعاد بناؤه بالكامل لأنه مشتق من المتبقي وعدد الأقساط */
-    private function syncInstallments(SalesContract $contract): void
+    /** العقد المُنشأ للتو لا سطور سابقة له — لا داعي لاستعلام حذف */
+    private function clearExisting(SalesContract $contract, string $relation, bool $isNew): void
     {
-        // لو بدأ التحصيل فعليًا، الجدول يبقى ثابتًا حتى لا يُفقد سجل الأقساط المدفوعة
-        if ($contract->installments()->whereNotNull('paid_at')->exists()) {
+        if (! $isNew) {
+            $contract->{$relation}()->delete();
+        }
+
+        $contract->unsetRelation($relation);
+    }
+
+    /**
+     * إدراج سطور تابعة للعقد (بنود/أقساط) باستعلام واحد بدل استعلام لكل سطر.
+     *
+     * @param  class-string<Model>  $model
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function insertChildren(string $model, SalesContract $contract, array $rows): void
+    {
+        if ($rows === []) {
             return;
         }
 
-        $contract->installments()->delete();
-        $contract->unsetRelation('installments');
+        $now = now();
+        $model::insert(array_map(fn (array $row) => $row + [
+            'sales_contract_id' => $contract->id,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ], $rows));
+    }
+
+    /** جدول الأقساط يُعاد بناؤه بالكامل لأنه مشتق من المتبقي وعدد الأقساط */
+    private function syncInstallments(SalesContract $contract, bool $isNew = false): void
+    {
+        // لو بدأ التحصيل فعليًا، الجدول يبقى ثابتًا حتى لا يُفقد سجل الأقساط المدفوعة
+        if (! $isNew && $contract->installments()->whereNotNull('paid_at')->exists()) {
+            return;
+        }
+
+        $this->clearExisting($contract, 'installments', $isNew);
 
         if (! $contract->isInstallment() || ! $contract->installments_count) {
             return;
@@ -252,13 +282,12 @@ class SalesContractService
             ];
         }
 
-        $contract->installments()->createMany($schedule);
+        $this->insertChildren(SalesContractInstallment::class, $contract, $schedule);
     }
 
-    private function syncMaintenanceSnapshot(SalesContract $contract, ?int $planId): void
+    private function syncMaintenanceSnapshot(SalesContract $contract, ?int $planId, bool $isNew = false): void
     {
-        $contract->maintenanceItems()->delete();
-        $contract->unsetRelation('maintenanceItems');
+        $this->clearExisting($contract, 'maintenanceItems', $isNew);
 
         if (! $planId) {
             return;
@@ -290,6 +319,10 @@ class SalesContractService
      */
     private function applyStock(SalesContract $contract, array $previousQuantities, ?array $previousSource): void
     {
+        if (! $contract->stock_tracked) {
+            return;
+        }
+
         $currentSource = $this->sourceContext($contract);
         $sourceChanged = $previousSource !== null
             && ($previousSource['type'] !== $currentSource['type'] || $previousSource['id'] !== $currentSource['id']);
@@ -302,7 +335,7 @@ class SalesContractService
             $previousQuantities = [];
         }
 
-        $current = $this->reservedQuantities($contract);
+        $current = $contract->reservedQuantitiesByProduct();
         $productIds = array_unique([...array_keys($previousQuantities), ...array_keys($current)]);
 
         foreach ($productIds as $productId) {
@@ -360,21 +393,10 @@ class SalesContractService
         return ['type' => $contract->stock_source, 'id' => $contract->stockSourceId()];
     }
 
-    /** @return array<int, int> */
-    private function reservedQuantities(SalesContract $contract): array
+    /** كود العقد: AQW-YYMM-0001 للبيع وAQM-YYMM-0001 للصيانة، متسلسل داخل نفس الشهر */
+    private function nextCode(Carbon $date, bool $maintenance): string
     {
-        return $contract->items()
-            ->selectRaw('product_id, SUM(quantity) as quantity')
-            ->groupBy('product_id')
-            ->pluck('quantity', 'product_id')
-            ->map(fn ($quantity) => (int) $quantity)
-            ->all();
-    }
-
-    /** كود العقد: AQW-YYMM-0001 متسلسل داخل نفس الشهر */
-    private function nextCode(Carbon $date): string
-    {
-        $prefix = self::CODE_PREFIX.$date->format('ym').'-';
+        $prefix = ($maintenance ? self::MAINTENANCE_CODE_PREFIX : self::CODE_PREFIX).$date->format('ym').'-';
 
         $lastCode = SalesContract::withTrashed()
             ->where('code', 'like', $prefix.'%')

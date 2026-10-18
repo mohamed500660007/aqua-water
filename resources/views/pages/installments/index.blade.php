@@ -17,7 +17,16 @@
 @endphp
 
 @section('content')
-    <x-ui.page-header icon="wallet" subtitle="متابعة وتحصيل أقساط عقود التقسيط" title="الأقساط" />
+    <x-ui.page-header icon="wallet" subtitle="متابعة وتحصيل أقساط عقود التقسيط" title="الأقساط">
+        <x-slot:actions>
+            {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق --}}
+            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 brand-green hover:bg-[#c2f040] shadow-sm text-[11px] px-3 py-2 gap-1.5 rounded-lg"
+                href="{{ route('installments.print') }}" target="_blank" rel="noopener">
+                <x-icon class="w-3.5 h-3.5" name="printer" />
+                طباعة إيصالات الشهر
+            </a>
+        </x-slot:actions>
+    </x-ui.page-header>
 
     <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
         <x-ui.kpi hint="تحتاج متابعة عاجلة" icon="triangle-alert" label="أقساط متأخرة" tone="red" unit="قسط"
@@ -85,7 +94,7 @@
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50" x-data="{ openId: null }">
+                <tbody class="divide-y divide-gray-50" x-data="{ openId: null, noteId: null }">
                     @foreach ($installments as $installment)
                         @php($status = $installment->status())
                         @php($contract = $installment->contract)
@@ -96,6 +105,12 @@
                                     {{ $contract->customer?->name ?? '—' }}</a>
                                 @if ($phone = $contract->customer?->primaryPhone?->phone)
                                     <a class="text-[11px] text-gray-400" dir="ltr" href="tel:{{ $phone }}">{{ $phone }}</a>
+                                @endif
+                                @if ($installment->note)
+                                    <p class="mt-1 flex items-start gap-1 text-[11px] text-amber-700 max-w-[240px]" title="تُطبع في الإيصال">
+                                        <x-icon class="w-3 h-3 mt-0.5 shrink-0" name="sticky-note" />
+                                        <span class="line-clamp-2">{{ $installment->note }}</span>
+                                    </p>
                                 @endif
                             </td>
                             <td class="px-4 py-3">
@@ -120,8 +135,11 @@
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
+                                    <x-ui.icon-btn icon="notebook-pen" :label="$installment->note ? 'تعديل ملاحظة الإيصال' : 'إضافة ملاحظة للإيصال'"
+                                        :tone="$installment->note ? 'primary' : 'default'"
+                                        x-on:click="noteId = noteId === {{ $installment->id }} ? null : {{ $installment->id }}; openId = null" />
                                     @if ($installment->isPaid())
-                                        <x-ui.icon-btn icon="printer" label="طباعة الإيصال"
+                                        <x-ui.icon-btn icon="printer" label="طباعة الإيصال" document
                                             :href="route('installments.receipt', $installment)" />
                                         <form action="{{ route('installments.uncollect', $installment) }}" method="POST" x-data>
                                             @csrf
@@ -137,12 +155,37 @@
                                     @else
                                         <button class="shrink-0 h-9 px-3.5 rounded-xl text-[12px] font-bold bg-brand-green/25 text-green-700 hover:bg-brand-green/40 transition-colors flex items-center gap-1.5"
                                             type="button"
-                                            x-on:click="openId = openId === {{ $installment->id }} ? null : {{ $installment->id }}">
+                                            x-on:click="openId = openId === {{ $installment->id }} ? null : {{ $installment->id }}; noteId = null">
                                             <x-icon class="w-3.5 h-3.5" name="banknote" />
                                             تعديل / تحصيل
                                         </button>
                                     @endif
                                 </div>
+                            </td>
+                        </tr>
+                        <tr x-cloak x-show="noteId === {{ $installment->id }}">
+                            <td class="px-4 pb-4 pt-0" colspan="7">
+                                <form action="{{ route('installments.note.update', $installment) }}" method="POST"
+                                    class="rounded-2xl bg-amber-50/60 border border-amber-100 p-3.5">
+                                    @csrf
+                                    @method('PATCH')
+                                    <label class="block text-[11px] font-bold text-gray-600 mb-1.5">
+                                        ملاحظة الإيصال — تُطبع في خانة «ملاحظات» بإيصال القسط #{{ $installment->number }} لـ {{ $contract->customer?->name ?? 'العميل' }}
+                                    </label>
+                                    <div class="flex flex-col sm:flex-row gap-2">
+                                        <input
+                                            class="flex-1 h-10 px-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
+                                            maxlength="255" name="note" placeholder="مثال: يُحصَّل بعد الساعة 5 مساءً — الدفع عند الزوجة"
+                                            type="text" value="{{ $installment->note }}" />
+                                        <div class="flex gap-2">
+                                            <button class="h-10 px-3.5 rounded-xl text-[12px] font-bold text-gray-500 hover:bg-white transition-colors"
+                                                type="button" x-on:click="noteId = null">إلغاء</button>
+                                            <button class="h-10 px-4 rounded-xl text-[12px] font-bold bg-brand-green text-brand-dark hover:brightness-95 transition"
+                                                type="submit">حفظ الملاحظة</button>
+                                        </div>
+                                    </div>
+                                    <p class="text-[10.5px] text-gray-500 mt-1.5">اترك الخانة فارغة واحفظ لحذف الملاحظة.</p>
+                                </form>
                             </td>
                         </tr>
                         @if (! $installment->isPaid())
@@ -217,10 +260,11 @@
                                             </div>
                                             <div class="sm:col-span-4">
                                                 <label class="block text-[11px] font-bold text-gray-500 mb-1.5">ملاحظة
-                                                    (اختياري)</label>
+                                                    الإيصال (اختياري — تُطبع في الإيصال)</label>
                                                 <input
                                                     class="w-full h-10 px-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
-                                                    name="note" placeholder="مثال: تحصيل نقدي عبر المندوب" type="text" />
+                                                    maxlength="255" name="note" placeholder="مثال: تحصيل نقدي عبر المندوب" type="text"
+                                                    value="{{ $installment->note }}" />
                                             </div>
                                         </div>
                                         <p class="text-[11px] text-amber-600 mt-2.5">

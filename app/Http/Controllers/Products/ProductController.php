@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Products;
 
 use App\Domain\Inventory\Models\StockMovement;
+use App\Domain\Inventory\Models\Warehouse;
+use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Enums\ProductStatus;
 use App\Domain\Products\Models\Product;
+use App\Domain\Products\Services\ProductReport;
 use App\Domain\Products\Services\ProductService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Products\ProductReportRequest;
 use App\Http\Requests\Products\ProductRequest;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -26,14 +29,44 @@ class ProductController extends Controller
         $products = Product::query()
             ->withSum('stockBalances as quantity', 'quantity')
             ->search($request->input('q'))
-            ->applyFilters($request->only(['category', 'status']))
+            ->applyFilters($request->only(['category', 'kind', 'status']))
             ->applySort($request->input('sort'), $request->input('dir'))
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
-        return view('pages.products.index', [
-            'products' => $products,
-            'stats' => $this->stats(),
+        return view('pages.products.index', ['products' => $products] + $this->formOptions());
+    }
+
+    public function report(ProductReportRequest $request, ProductReport $report): View
+    {
+        $period = $request->period();
+        $content = $request->content();
+        $report = $report->forWarehouse($request->warehouseId());
+        $products = Product::query()
+            ->search($request->validated('q'))
+            ->applyFilters($request->filters());
+
+        // الأجزاء غير المطلوبة للطباعة لا تُحسب أصلًا
+        $withSummary = $content !== 'list';
+        $rows = $content !== 'summary'
+            ? $report->rows($products, $period, $request->validated('sort'), $request->validated('dir'))
+            : collect();
+
+        return view('pages.products.report', [
+            'period' => $period,
+            'content' => $content,
+            'counts' => $report->counts($products),
+            'byKind' => $withSummary ? $report->stockByKind($products) : collect(),
+            'byWarehouse' => $withSummary ? $report->stockByWarehouse($products) : collect(),
+            'activity' => $withSummary ? $report->activity($products, $period) : null,
+            'rows' => $rows->take(ProductReport::MAX_ROWS),
+            'truncated' => $rows->count() > ProductReport::MAX_ROWS,
+            'search' => $request->validated('q'),
+            'filters' => $request->filters(),
+            'listQuery' => $request->listQuery(),
+            'contents' => ProductReportRequest::CONTENTS,
+            'sorts' => ProductReportRequest::SORTS,
+            'warehouses' => Warehouse::options(),
         ] + $this->formOptions());
     }
 
@@ -88,33 +121,11 @@ class ProductController extends Controller
             ->with('success', "تم حذف المنتج «{$product->name}».");
     }
 
-    /** ملخص الكتالوج وقيمة المخزون في استعلامين تجميعيين */
-    private function stats(): array
-    {
-        $counts = Product::query()
-            ->selectRaw('COUNT(*) as products')
-            ->selectRaw('SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as active', [ProductStatus::Active->value])
-            ->first();
-
-        $value = DB::table('stock_balances')
-            ->join('products', 'products.id', '=', 'stock_balances.product_id')
-            ->whereNull('products.deleted_at')
-            ->selectRaw('COALESCE(SUM(stock_balances.quantity * products.price), 0) as value')
-            ->selectRaw('COALESCE(SUM(stock_balances.quantity), 0) as pieces')
-            ->first();
-
-        return [
-            'products' => (int) ($counts->products ?? 0),
-            'active' => (int) ($counts->active ?? 0),
-            'pieces' => (int) ($value->pieces ?? 0),
-            'value' => (float) ($value->value ?? 0),
-        ];
-    }
-
     private function formOptions(): array
     {
         return [
             'statuses' => ProductStatus::options(),
+            'kinds' => ProductKind::options(),
             'categories' => Product::categories(),
         ];
     }

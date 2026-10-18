@@ -6,6 +6,7 @@ use App\Domain\Inventory\Data\StockMovementData;
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\StockService;
+use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Enums\ProductStatus;
 use App\Domain\Products\Models\Product;
 use Illuminate\Database\Seeder;
@@ -33,6 +34,7 @@ class CatalogSeeder extends Seeder
                 [
                     'name' => $row['name'],
                     'category' => $row['category'],
+                    'kind' => $this->kindOf($row['category']),
                     'price' => $row['price'],
                     'cost' => $row['cost'],
                     'warranty' => $row['warranty'],
@@ -51,6 +53,15 @@ class CatalogSeeder extends Seeder
                 ));
             }
         }
+    }
+
+    private function kindOf(string $category): ProductKind
+    {
+        return match ($category) {
+            'فلاتر منزلية', 'فلاتر مركزية', 'أجهزة تحلية' => ProductKind::Device,
+            'شمعات وفلاتر بديلة' => ProductKind::Cartridge,
+            default => ProductKind::Other,
+        };
     }
 
     /** بيانات تجريبية للمنتجات مع رصيدها الافتتاحي */

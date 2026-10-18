@@ -56,10 +56,7 @@ class MaintenancePlanService
         foreach ($data->items as $item) {
             $plan->items()->updateOrCreate(
                 ['product_id' => $item->productId],
-                [
-                    'interval_months' => $item->intervalMonths,
-                    'replacement_date' => $item->replacementDate,
-                ],
+                ['replacement_date' => $item->replacementDate],
             );
         }
 

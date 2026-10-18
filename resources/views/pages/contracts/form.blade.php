@@ -38,6 +38,8 @@
         'installmentsCount' => (int) old('installments_count', $contract?->installments_count ?? 6),
         'periodMonths' => (int) old('installment_period_months', $contract?->installment_period_months ?? 1),
         'planId' => (string) old('maintenance_plan_id', $contract?->maintenance_plan_id ?? ''),
+        'kind' => old('kind', $contract?->kind?->value ?? ($defaultKind ?? 'sale')),
+        'price' => (float) old('price', $contract?->isMaintenance() ? $contract->subtotal : 0),
     ];
 
     $stockSourceOptions = collect($stockSources)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values();
@@ -84,6 +86,24 @@
                     <h2 class="text-sm font-bold text-gray-800">بيانات العقد</h2>
                 </div>
 
+                <div class="mb-4">
+                    <label class="block text-[12px] font-bold text-gray-600 mb-2">نوع التعاقد</label>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($kinds as $value => $label)
+                            <button class="h-10 px-4 rounded-xl text-[12px] font-bold border transition-colors"
+                                type="button"
+                                x-bind:class="kind === @js($value) ? 'border-brand-green bg-brand-green/20 text-brand-dark' :
+                                    'border-gray-200 text-gray-500 hover:bg-gray-50'"
+                                x-on:click="kind = @js($value)">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                    <input name="kind" type="hidden" x-bind:value="kind" />
+                    <p class="text-[11px] text-gray-400 mt-1.5" x-cloak x-show="kind === 'maintenance'">
+                        عقد صيانة فقط بسعر ثابت (لعميل داخلي أو خارجي) — لا يصرف أجهزة من المخزن، ويُحصَّل نقدًا أو بالتقسيط
+                        مثل عقد البيع.
+                    </p>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-ui.field label="تاريخ العقد" name="contract_date" type="date"
                         :value="old('contract_date', $contract?->contract_date?->format('Y-m-d') ?? today()->toDateString())" required
@@ -93,7 +113,8 @@
                         placeholder="اختر النوع" required x-model="type" />
 
                     <x-ui.field label="تاريخ التركيب" name="installation_date" type="date"
-                        :value="old('installation_date', $contract?->installation_date?->format('Y-m-d'))" required />
+                        :value="old('installation_date', $contract?->installation_date?->format('Y-m-d'))"
+                        hint="مطلوب لعقود البيع فقط" />
 
                     <x-ui.field label="تاريخ الصيانة" name="maintenance_date" type="date"
                         :value="old('maintenance_date', $contract?->maintenance_date?->format('Y-m-d'))" required />
@@ -136,7 +157,7 @@
                         :value="$defaults['warehouseId']" placeholder="اختر المخزن" required x-model="warehouseId" />
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-gray-50">
+                <div class="mt-4 pt-4 border-t border-gray-50" x-show="kind === 'sale'">
                     <label class="block text-[12px] font-bold text-gray-600 mb-2">تُصرف البضاعة من</label>
                     <div class="flex flex-wrap gap-2">
                         <template x-bind:key="source.value" x-for="source in stockSources">
@@ -177,8 +198,8 @@
             </section>
 
             {{-- بنود العقد --}}
-            <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <div class="flex items-center justify-between gap-3 mb-4">
+            <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5" x-show="kind === 'sale'">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2.5">
                         <span class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                             <x-icon class="w-[18px] h-[18px]" name="package" />
@@ -305,7 +326,7 @@
                         <div class="flex items-center justify-between gap-3 p-3 rounded-2xl border border-gray-100">
                             <span class="text-[13px] font-bold text-gray-800" x-text="item.product"></span>
                             <div class="flex items-center gap-4 shrink-0">
-                                <span class="text-[11px] text-gray-400">
+                                <span class="text-[11px] text-gray-400" x-show="item.interval_months">
                                     كل <span class="font-bold text-gray-600" x-text="item.interval_months"></span> شهر
                                 </span>
                                 <span class="text-[11px] text-gray-400" dir="ltr" x-text="item.replacement_date"></span>
@@ -321,7 +342,16 @@
             <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 lg:sticky lg:top-2">
                 <h2 class="text-sm font-bold text-gray-800 mb-4">الملخص المالي</h2>
 
-                <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
+                <div class="py-3 border-b border-gray-50" x-cloak x-show="kind === 'maintenance'">
+                    <label class="block text-[12px] font-bold text-gray-600 mb-1.5">سعر عقد الصيانة (ج.م)</label>
+                    <input
+                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
+                        min="0" name="price" placeholder="0" step="0.01" type="number" x-model.number="price" />
+                    <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.price"
+                        x-text="errors.price"></p>
+                </div>
+
+                <div class="flex items-center justify-between py-2.5 border-b border-gray-50" x-show="kind === 'sale'">
                     <span class="text-[12px] text-gray-400">السعر الأصلي</span>
                     <span class="text-[13px] font-bold text-gray-800">
                         <span x-text="Number(subtotal).toLocaleString('en')"></span>
@@ -453,6 +483,8 @@
                 periodMonths: config.defaults.periodMonths,
                 firstDueDate: @js(old('first_due_date', $contract?->first_due_date?->format('Y-m-d') ?? today()->addMonth()->toDateString())),
                 planId: config.defaults.planId,
+                kind: config.defaults.kind,
+                price: config.defaults.price,
 
                 product(row) {
                     return this.products.find(p => p.id === row.product_id) || null;
@@ -500,6 +532,8 @@
                 },
 
                 get subtotal() {
+                    if (this.kind === 'maintenance') return round(this.price);
+
                     return round(this.items.reduce((sum, row) => sum + this.lineTotal(row), 0));
                 },
 
@@ -567,24 +601,28 @@
                 },
 
                 validateAll() {
+                    const isSale = this.kind === 'sale';
+
                     this.errors = {
-                        items: this.items.length ? '' : 'يجب إضافة بند واحد على الأقل للعقد.',
+                        items: !isSale || this.items.length ? '' : 'يجب إضافة بند واحد على الأقل للعقد.',
+                        price: isSale || (Number(this.price) || 0) > 0 ? '' : 'اكتب سعر عقد الصيانة.',
                         discount: (Number(this.discount) || 0) > this.subtotal ? 'الخصم لا يمكن أن يتجاوز إجمالي البنود.' : '',
                         paid: (Number(this.paid) || 0) > this.total ? 'المبلغ المدفوع لا يمكن أن يتجاوز إجمالي العقد.' : '',
                         stockSource: ''
                     };
 
-                    if (this.stockSource === 'sales_rep' && !this.salesRepId) {
-                        this.errors.stockSource = 'يجب اختيار مندوب المبيعات لأن مصدر البضاعة منه.';
-                    } else if (this.stockSource === 'installer' && !this.installerId) {
-                        this.errors.stockSource = 'يجب اختيار فني التركيب لأن مصدر البضاعة منه.';
-                    }
-
                     if (!this.errors.paid && this.type === 'installment' && this.remaining <= 0) {
                         this.errors.paid = 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد.';
                     }
 
-                    const rowsValid = this.items.map(row => this.validateRow(row)).every(Boolean);
+                    if (isSale && this.stockSource === 'sales_rep' && !this.salesRepId) {
+                        this.errors.stockSource = 'يجب اختيار مندوب المبيعات لأن مصدر البضاعة منه.';
+                    } else if (isSale && this.stockSource === 'installer' && !this.installerId) {
+                        this.errors.stockSource = 'يجب اختيار فني التركيب لأن مصدر البضاعة منه.';
+                    }
+
+                    // بنود البيع المخفية في عقد الصيانة لا تُرسل للحفظ، فلا داعي للتحقق منها
+                    const rowsValid = !isSale || this.items.map(row => this.validateRow(row)).every(Boolean);
 
                     return rowsValid && Object.values(this.errors).every(message => !message);
                 }

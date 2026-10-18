@@ -39,7 +39,13 @@ class UserService
             'department' => $data->department,
             'branch' => $data->branch,
             'status' => $data->status,
-        ];
+            'base_salary' => $data->baseSalary,
+            'installment_commission' => $data->installmentCommission,
+            'device_commission' => $data->deviceCommission,
+            'installation_commission' => $data->installationCommission,
+            'marketing_commission' => $data->marketingCommission,
+            'maintenance_commission' => $data->maintenanceCommission,
+        ] + $data->profile->toAttributes();
 
         if (filled($data->password)) {
             $attributes['password'] = $data->password;

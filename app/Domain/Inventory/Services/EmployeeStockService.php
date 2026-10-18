@@ -108,6 +108,20 @@ class EmployeeStockService
             ->all();
     }
 
+    /**
+     * عهدة كل الموظفين دفعة واحدة: [user_id => [product_id => quantity]].
+     *
+     * @return array<int, array<int, int>>
+     */
+    public function availabilityMatrix(): array
+    {
+        return EmployeeStock::query()
+            ->get(['user_id', 'product_id', 'quantity'])
+            ->groupBy('user_id')
+            ->map(fn ($balances) => $balances->pluck('quantity', 'product_id')->map(fn ($q) => (int) $q)->all())
+            ->all();
+    }
+
     private function applyDelta(
         int $userId,
         int $productId,

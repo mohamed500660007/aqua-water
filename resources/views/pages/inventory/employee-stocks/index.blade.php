@@ -9,6 +9,7 @@
         <x-slot:actions>
             <x-ui.btn icon="package-plus" size="sm" variant="soft" :href="route('inventory.stock.create')">إضافة إلى
                 المخزن</x-ui.btn>
+            <x-ui.btn icon="scale" size="sm" variant="soft" :href="route('inventory.custody-settlements.index')">تسويات العهد</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('inventory.employee-stocks.create')">تسليم عهدة لموظف</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>
@@ -20,7 +21,8 @@
                     <div class="flex items-center gap-3 mb-3.5">
                         <x-ui.avatar :name="$employeeName" size="w-10 h-10" />
                         <div class="min-w-0 flex-1">
-                            <p class="text-[13px] font-bold text-gray-800 truncate">{{ $employeeName }}</p>
+                            <a class="block text-[13px] font-bold text-gray-800 truncate hover:underline"
+                                href="{{ route('inventory.employee-stocks.show', $items->first()->user_id) }}" wire:navigate>{{ $employeeName }}</a>
                             <p class="text-[11px] text-gray-400">{{ $items->first()->user?->role }}</p>
                         </div>
                         <span class="shrink-0 text-[11px] font-bold text-gray-400">

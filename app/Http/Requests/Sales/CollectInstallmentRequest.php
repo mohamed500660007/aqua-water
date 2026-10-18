@@ -17,11 +17,13 @@ class CollectInstallmentRequest extends FormRequest
             'paid_at' => ['required', 'date', 'before_or_equal:today'],
             'collected_by_id' => [
                 'nullable',
-                Rule::exists('users', 'id')->where('role', 'فني تركيب')->whereNull('deleted_at'),
+                Rule::exists('users', 'id')->where(fn ($query) => $query
+                    ->whereIn('role', ['محصل', 'فني تركيب']))->whereNull('deleted_at'),
             ],
             'sales_rep_id' => [
                 'nullable',
-                Rule::exists('users', 'id')->where('role', 'مندوب مبيعات')->whereNull('deleted_at'),
+                Rule::exists('users', 'id')->where(fn ($query) => $query
+                    ->whereIn('role', ['مندوب مبيعات', 'مندوبة', 'سكرتارية']))->whereNull('deleted_at'),
             ],
             'note' => ['nullable', 'string', 'max:255'],
         ];
@@ -70,7 +72,7 @@ class CollectInstallmentRequest extends FormRequest
         return [
             'amount' => 'المبلغ المحصَّل',
             'paid_at' => 'تاريخ التحصيل',
-            'collected_by_id' => 'الفني المُحصِّل',
+            'collected_by_id' => 'المُحصِّل',
             'sales_rep_id' => 'المندوبة المسؤولة',
             'note' => 'ملاحظة',
         ];
@@ -79,8 +81,8 @@ class CollectInstallmentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'collected_by_id.exists' => 'الفني المختار غير موجود أو لا يحمل دور فني تركيب.',
-            'sales_rep_id.exists' => 'المندوبة المختارة غير موجودة أو لا تحمل دور مندوب مبيعات.',
+            'collected_by_id.exists' => 'المحصل المختار غير موجود أو لا يحمل دورًا مناسبًا للتحصيل.',
+            'sales_rep_id.exists' => 'المندوبة المختارة غير موجودة أو لا تحمل دورًا مناسبًا.',
         ];
     }
 

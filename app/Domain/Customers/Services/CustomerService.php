@@ -4,6 +4,7 @@ namespace App\Domain\Customers\Services;
 
 use App\Domain\Customers\Data\CustomerData;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Customers\Models\CustomerPhone;
 use App\Support\PhoneNumber;
 use Illuminate\Support\Facades\DB;
 
@@ -13,35 +14,85 @@ class CustomerService
 
     private const CODE_LENGTH = 5;
 
+    private const INSERT_CHUNK = 500;
+
     public function create(CustomerData $data): Customer
     {
         return DB::transaction(function () use ($data) {
             $customer = Customer::create($this->attributes($data) + [
-                'code' => $data->code ?? $this->nextCode(),
+                'code' => $this->formatCode($this->lastCodeNumber() + 1),
             ]);
 
             $this->syncPhones($customer, $data);
 
             return $customer;
+        });
+    }
+
+    /**
+     * إنشاء دفعة عملاء (استيراد الإكسيل) — كلهم أو لا أحد، والكود يُحسب مرة واحدة ثم يتزايد محليًا،
+     * فعدد الاستعلامات ثابت تقريبًا مهما كبر الملف.
+     *
+     * @param  list<CustomerData>  $customers
+     */
+    public function createMany(array $customers): int
+    {
+        return DB::transaction(function () use ($customers) {
+            $number = $this->lastCodeNumber();
+            $now = now();
+            $rows = [];
+            $phonesByCode = [];
+
+            foreach ($customers as $data) {
+                $code = $this->formatCode(++$number);
+                $rows[] = [
+                    ...$this->attributes($data),
+                    'status' => $data->status->value,
+                    'origin' => $data->origin->value,
+                    'code' => $code,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+                $phonesByCode[$code] = $this->phoneNumbers($data);
+            }
+
+            // إدراج مجمّع ثم استعلام واحد لمعرفة معرّفات العملاء الجدد بأكوادهم الفريدة
+            foreach (array_chunk($rows, self::INSERT_CHUNK) as $chunk) {
+                Customer::insert($chunk);
+            }
+
+            $ids = Customer::query()->whereIn('code', array_keys($phonesByCode))->pluck('id', 'code');
+            $phoneRows = [];
+
+            foreach ($phonesByCode as $code => $numbers) {
+                foreach ($numbers as $phone => $isPrimary) {
+                    $phoneRows[] = [
+                        'customer_id' => $ids[$code],
+                        'phone' => $phone,
+                        'is_primary' => $isPrimary,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
+                }
+            }
+
+            foreach (array_chunk($phoneRows, self::INSERT_CHUNK) as $chunk) {
+                CustomerPhone::insert($chunk);
+            }
+
+            return count($rows);
         });
     }
 
     public function update(Customer $customer, CustomerData $data): Customer
     {
         return DB::transaction(function () use ($customer, $data) {
-            $customer->update($this->attributes($data) + [
-                'code' => $data->code ?? $customer->code,
-            ]);
+            $customer->update($this->attributes($data));
 
             $this->syncPhones($customer, $data);
 
             return $customer;
         });
-    }
-
-    public function delete(Customer $customer): void
-    {
-        $customer->delete();
     }
 
     /** @return array<string, mixed> */
@@ -55,6 +106,7 @@ class CustomerService
             'village' => $data->village,
             'detailed_address' => $data->detailedAddress,
             'status' => $data->status,
+            'origin' => $data->origin,
             'notes' => $data->notes,
             'registered_at' => $data->registeredAt,
         ];
@@ -63,40 +115,53 @@ class CustomerService
     /** حفظ أرقام الهاتف مع الحفاظ على السجلات الموجودة وتحديد رقم أساسي واحد فقط */
     private function syncPhones(Customer $customer, CustomerData $data): void
     {
-        $normalized = collect($data->phones)
-            ->map(fn (string $phone) => PhoneNumber::normalize($phone))
-            ->filter()
-            ->values();
+        $numbers = $this->phoneNumbers($data);
 
-        if ($normalized->isEmpty()) {
+        if ($numbers === []) {
             return;
         }
 
-        $primary = $normalized->get($data->primaryPhoneIndex) ?? $normalized->first();
-        $numbers = $normalized->unique()->values();
+        $customer->phones()->whereNotIn('phone', array_keys($numbers))->delete();
 
-        $customer->phones()->whereNotIn('phone', $numbers->all())->delete();
-
-        foreach ($numbers as $number) {
-            $customer->phones()->updateOrCreate(
-                ['phone' => $number],
-                ['is_primary' => $number === $primary],
-            );
+        foreach ($numbers as $number => $isPrimary) {
+            $customer->phones()->updateOrCreate(['phone' => $number], ['is_primary' => $isPrimary]);
         }
 
         $customer->unsetRelation('phones')->unsetRelation('primaryPhone');
     }
 
-    /** الكود التالي بناءً على آخر كود مولّد تلقائيًا — تشمل المحذوفين حتى لا يتكرر كود قديم */
-    private function nextCode(): string
+    /**
+     * الأرقام بعد توحيد صيغتها وحذف المكرر: [الرقم => هل هو الأساسي].
+     *
+     * @return array<string, bool>
+     */
+    private function phoneNumbers(CustomerData $data): array
+    {
+        $normalized = collect($data->phones)
+            ->map(fn (string $phone) => PhoneNumber::normalize($phone))
+            ->filter()
+            ->values();
+
+        $primary = $normalized->get($data->primaryPhoneIndex) ?? $normalized->first();
+
+        return $normalized->unique()
+            ->mapWithKeys(fn (string $number) => [$number => $number === $primary])
+            ->all();
+    }
+
+    /** رقم آخر كود — يشمل المحذوفين سابقًا حتى لا يتكرر كود قديم */
+    private function lastCodeNumber(): int
     {
         $lastCode = Customer::withTrashed()
             ->where('code', 'like', self::CODE_PREFIX.'%')
             ->orderByDesc('code')
             ->value('code');
 
-        $lastNumber = $lastCode ? (int) substr($lastCode, strlen(self::CODE_PREFIX)) : 0;
+        return $lastCode ? (int) substr($lastCode, strlen(self::CODE_PREFIX)) : 0;
+    }
 
-        return self::CODE_PREFIX.str_pad((string) ($lastNumber + 1), self::CODE_LENGTH, '0', STR_PAD_LEFT);
+    private function formatCode(int $number): string
+    {
+        return self::CODE_PREFIX.str_pad((string) $number, self::CODE_LENGTH, '0', STR_PAD_LEFT);
     }
 }

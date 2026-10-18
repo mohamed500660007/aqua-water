@@ -23,7 +23,6 @@ class MaintenancePlanRequest extends FormRequest
                 'distinct',
                 Rule::exists('products', 'id')->whereNull('deleted_at'),
             ],
-            'items.*.interval_months' => ['required', 'integer', 'min:1', 'max:60'],
             'items.*.replacement_date' => ['required', 'date'],
         ];
     }
@@ -58,7 +57,6 @@ class MaintenancePlanRequest extends FormRequest
             'status' => 'الحالة',
             'items' => 'بنود الخطة',
             'items.*.product_id' => 'المنتج',
-            'items.*.interval_months' => 'الدورية بالأشهر',
             'items.*.replacement_date' => 'تاريخ الاستبدال',
         ];
     }
@@ -71,8 +69,6 @@ class MaintenancePlanRequest extends FormRequest
             'items.*.product_id.required' => 'اختر المنتج في كل بند.',
             'items.*.product_id.distinct' => 'لا يمكن تكرار نفس المنتج داخل الخطة.',
             'items.*.product_id.exists' => 'المنتج المختار غير موجود.',
-            'items.*.interval_months.min' => 'الدورية يجب ألا تقل عن شهر واحد.',
-            'items.*.interval_months.max' => 'الدورية يجب ألا تزيد عن 60 شهرًا.',
             'items.*.replacement_date.required' => 'حدّد تاريخ الاستبدال في كل بند.',
         ];
     }
