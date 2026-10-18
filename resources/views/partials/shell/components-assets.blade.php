@@ -196,27 +196,78 @@
     .ui-th-sort svg { width: 12px; height: 12px; transition: transform .3s var(--ui-ease), opacity .2s ease; }
     .ui-th-sort.is-active { background: #1A1A1A; color: var(--ui-lime); }
 
-    /* ===== أزرار الصف (عرض / تعديل / حذف) ===== */
+    /* ===== أزرار الإجراءات (عرض / تعديل / حذف) =====
+       لون كل زر يعبّر عن معناه، وعند المرور يمتلئ بلونه ويظهر اسمه في فقاعة داكنة فوقه */
     .ui-icon-btn {
-        width: 38px;
-        height: 38px;
+        position: relative;
+        width: 34px;
+        height: 34px;
         flex-shrink: 0;
         display: grid;
         place-items: center;
-        border-radius: 12px;
-        color: #8A9099;
-        border: 1px solid transparent;
-        transition: transform .25s var(--ui-ease), background-color .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease;
+        border-radius: 11px;
+        color: #4B5563;
+        transition: transform .25s var(--ui-spring), background-color .2s ease, color .2s ease, box-shadow .2s ease;
     }
 
-    .ui-icon-btn svg, .ui-icon-btn i { width: 17px; height: 17px; }
-    .ui-icon-btn:hover { transform: translateY(-2px); color: #111827; background: #fff; border-color: var(--ui-line); box-shadow: 0 10px 18px -14px rgba(26, 26, 26, .5); }
-    .ui-icon-btn:active { transform: scale(.9); }
-    .ui-icon-btn.is-primary:hover { color: #1A1A1A; background: var(--ui-lime); border-color: transparent; box-shadow: 0 10px 18px -10px rgba(132, 204, 22, .8); }
-    .ui-icon-btn.is-danger:hover { color: #DC2626; background: #FFF0F0; border-color: #FFD4D4; }
+    .ui-icon-btn svg, .ui-icon-btn i { width: 16px; height: 16px; transition: transform .3s var(--ui-spring); }
+    .ui-icon-btn.is-primary { color: #7C3AED; }
+    .ui-icon-btn.is-danger { color: #EF4444; }
+
+    .ui-icon-btn:hover { transform: translateY(-2px); color: #fff; background: #1A1A1A; box-shadow: 0 10px 18px -10px rgba(0, 0, 0, .7); }
+    .ui-icon-btn:hover svg { transform: scale(1.08) rotate(-6deg); }
+    .ui-icon-btn.is-primary:hover { color: #1A1A1A; background: var(--ui-lime); box-shadow: 0 10px 18px -8px rgba(132, 204, 22, .85); }
+    .ui-icon-btn.is-danger:hover { color: #fff; background: linear-gradient(160deg, #F87171, #DC2626); box-shadow: 0 10px 18px -8px rgba(220, 38, 38, .75); }
+    .ui-icon-btn:active { transform: scale(.88); }
+    .ui-icon-btn:focus-visible { outline: 2px solid #84CC16; outline-offset: 2px; }
+
+    /* فقاعة الاسم من aria-label */
+    .ui-icon-btn[aria-label]:not([aria-label=""])::after {
+        content: attr(aria-label);
+        position: absolute;
+        z-index: 20;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        padding: 5px 10px;
+        border-radius: 9px;
+        background: #1A1A1A;
+        color: var(--ui-lime);
+        font-size: 11.5px;
+        font-weight: 800;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transform: translate(-50%, 4px) scale(.9);
+        transition: opacity .15s ease, transform .2s var(--ui-spring);
+        box-shadow: 0 10px 20px -10px rgba(0, 0, 0, .6);
+    }
+
+    .ui-icon-btn:hover::after, .ui-icon-btn:focus-visible::after { opacity: 1; transform: translate(-50%, 0) scale(1); }
+
+    /* خانة الإجراءات في الجدول: الأزرار داخل كبسولة واحدة باهتة قليلًا حتى يمر المؤشر على صفها */
+    #appContent td:last-child > .flex:has(.ui-icon-btn) {
+        display: inline-flex !important;
+        float: left;
+        gap: 2px !important;
+        padding: 3px;
+        border-radius: 14px;
+        background: #F6F7F9;
+        box-shadow: inset 0 0 0 1px #ECEEF1;
+        opacity: .8;
+        transition: opacity .2s ease, background-color .2s ease, box-shadow .2s ease;
+    }
+
+    #appContent tr:hover > td:last-child > .flex:has(.ui-icon-btn) {
+        opacity: 1;
+        background: #fff;
+        box-shadow: inset 0 0 0 1px #E4E7EB, 0 10px 22px -16px rgba(26, 26, 26, .55);
+    }
 
     @media (max-width: 767px) {
-        .ui-icon-btn { width: 44px; height: 44px; background: #F5F6F8; }
+        .ui-icon-btn { width: 40px; height: 40px; }
+        #appContent td:last-child > .flex:has(.ui-icon-btn) { float: none; opacity: 1; }
+        /* لا فقاعات على اللمس — الاسم يُقرأ من الأيقونة نفسها */
+        .ui-icon-btn::after { content: none !important; }
     }
 
     /* ===== الترقيم ===== */
@@ -484,21 +535,102 @@
     .ui-avatar-4 { background: linear-gradient(145deg, #DDF8F3, #8FE3D5); color: #115E59; }
     .ui-avatar-5 { background: linear-gradient(145deg, #FFE4E4, #FCA5A5); color: #B91C1C; }
 
-    /* ===== بطاقات الجدول على الهاتف ===== */
+    /* ===== الهاتف: مكونات أصغر وأكثف بنفس الهوية ===== */
     @media (max-width: 767px) {
+        /* بطاقة الصف: الخانة الأولى رأس البطاقة، والباقي شبكة من عمودين بخطوط رفيعة،
+           والإجراءات تذييل — بدل صف كامل لكل خانة */
+        .mobile-table-shell { padding: .6rem !important; background: transparent !important; }
+        .mobile-card-table tbody { gap: .6rem !important; }
+
         .mobile-card-table tbody > tr {
-            border-color: var(--ui-line) !important;
-            border-radius: 22px !important;
-            box-shadow: 0 16px 30px -26px rgba(26, 26, 26, .55) !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1px;
+            border: 0 !important;
+            border-radius: 20px !important;
+            background: #ECEEF1 !important;
+            box-shadow: 0 0 0 1px #ECEEF1, 0 14px 26px -22px rgba(26, 26, 26, .55) !important;
             animation: ui-row-in .45s var(--ui-ease) both;
         }
 
+        /* block لا flex: حتى تبقى العناصر المتجاورة (المبلغ + «ج.م») في سطر واحد كما في الجدول */
+        .mobile-card-table tbody > tr > td {
+            display: block !important;
+            min-width: 0;
+            min-height: 0 !important;
+            padding: 9px 12px !important;
+            border: 0 !important;
+            background: #fff;
+            font-size: 13px;
+        }
+
+        .mobile-card-table tbody > tr > td::before {
+            display: block;
+            margin-bottom: 3px;
+            padding: 0 !important;
+            font-size: 11px !important;
+            font-weight: 700;
+            color: #9AA1AB !important;
+            line-height: 1.3 !important;
+        }
+
+        /* خانة وحيدة في آخر سطر الشبكة تمتد بعرض البطاقة بدل ترك فراغ رمادي */
+        .mobile-card-table tbody > tr > td:nth-child(even):nth-last-child(2) { grid-column: 1 / -1; }
+
         .mobile-card-table tbody > tr > td:first-child {
-            background: linear-gradient(180deg, #F9FEEA, #FFFFFF) !important;
+            grid-column: 1 / -1;
+            padding: 11px 12px !important;
+            background: linear-gradient(180deg, #F7FDE6, #FFFFFF) !important;
             box-shadow: inset -3px 0 0 #C6F23E;
         }
 
-        .mobile-card-table tbody > tr > td { border-bottom-style: dashed !important; }
+        .mobile-card-table tbody > tr > td:first-child::before { content: none !important; }
+
+        .mobile-card-table tbody > tr > td:last-child {
+            grid-column: 1 / -1;
+            background: #FBFBFC;
+        }
+
+        .mobile-card-table tbody > tr > td:last-child:has(.ui-icon-btn) {
+            display: flex !important;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            padding-block: 6px !important;
+        }
+
+        .mobile-card-table tbody > tr > td:last-child:has(.ui-icon-btn)::before { align-self: center; margin: 0; }
+        .mobile-card-table td > .flex:has(.ui-icon-btn) { width: auto !important; }
+
+        .mobile-card-table .ui-avatar { width: 36px !important; height: 36px !important; }
+        .mobile-card-table .ui-badge { height: 24px; padding: 0 8px; font-size: 11px; }
+
+        /* الحقول والأزرار: 44px (أصغر مقاس لمس مريح)، ونص الحقول يبقى 16px حتى لا يكبّر iOS الصفحة */
+        input.ui-input, button.ui-input { height: 44px !important; }
+        .ui-btn-md, .ui-btn-lg { min-height: 44px; }
+        .mobile-page-actions > :not(.mobile-actions-more) { min-height: 44px !important; }
+        .mobile-actions-more > summary { width: 44px !important; height: 44px !important; }
+        .mobile-filter-trigger { height: 44px !important; min-width: 44px !important; border-radius: 14px !important; }
+        .mobile-filter-form { padding: .6rem !important; gap: .5rem !important; }
+
+        /* البطاقات أقل حشوًا */
+        #appContent .bg-white.rounded-2xl.border-gray-100 { border-radius: 20px; }
+        #appContent .bg-white.rounded-2xl.border-gray-100.p-5 { padding: 14px !important; }
+
+        /* المؤشرات: شرائح سحب صغيرة بدل بطاقات بعرض الشاشة */
+        .mobile-kpi-row > .ui-kpi { flex: 0 0 150px !important; }
+        .ui-kpi, .ui-kpi.is-compact { padding: 12px; }
+        .ui-kpi-head { margin-bottom: 8px; }
+        .ui-kpi-icon, .ui-kpi.is-compact .ui-kpi-icon { width: 30px; height: 30px; border-radius: 10px; }
+        .ui-kpi-icon svg, .ui-kpi-icon i { width: 15px !important; height: 15px !important; }
+        .ui-kpi-value, .ui-kpi.is-compact .ui-kpi-value { font-size: 19px; }
+        .ui-kpi-label { font-size: 11.5px !important; margin-bottom: 2px; }
+        .ui-kpi-glyph { width: 64px !important; height: 64px !important; }
+        .ui-kpi::after { inset-inline-start: 12px; }
+
+        .ui-pager { padding: 10px 12px; gap: 10px; }
+        .ui-page { min-width: 40px; height: 40px; }
+        .ui-empty { padding: 36px 18px; }
+        .ui-empty-art { width: 92px; height: 92px; }
     }
 
     /* ===== التنبيهات ونافذة التأكيد ===== */

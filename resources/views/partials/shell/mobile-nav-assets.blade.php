@@ -32,16 +32,16 @@
     .m-header {
         display: flex;
         align-items: center;
-        gap: 10px;
-        height: 58px;
-        padding: 0 8px 0 9px;
+        gap: 9px;
+        height: 52px;
+        padding: 0 6px 0 7px;
     }
 
     .m-logo {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         flex-shrink: 0;
-        border-radius: 13px;
+        border-radius: 12px;
         display: grid;
         place-items: center;
         background: linear-gradient(145deg, #E4FF8A, #C6F23E);
@@ -50,14 +50,14 @@
     }
 
     .m-title { min-width: 0; flex: 1; }
-    .m-title small { display: block; font-size: 12px; line-height: 1.3; color: rgba(255, 255, 255, .5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .m-title strong { display: block; font-size: 16px; line-height: 1.3; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-title small { display: block; font-size: 11px; line-height: 1.3; color: rgba(255, 255, 255, .5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-title strong { display: block; font-size: 15px; line-height: 1.3; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     .m-icon-btn {
-        width: 44px;
-        height: 44px;
+        width: 40px;
+        height: 40px;
         flex-shrink: 0;
-        border-radius: 14px;
+        border-radius: 13px;
         display: grid;
         place-items: center;
         color: #fff;
@@ -71,9 +71,9 @@
     /* ===== الشريط السفلي ===== */
     .m-dock {
         display: grid;
-        grid-template-columns: 1fr 1fr 76px 1fr 1fr;
+        grid-template-columns: 1fr 1fr 70px 1fr 1fr;
         align-items: center;
-        height: 66px;
+        height: 60px;
         padding: 0 6px;
     }
 
@@ -81,8 +81,8 @@
         position: absolute;
         top: 7px;
         left: 0;
-        height: 52px;
-        border-radius: 17px;
+        height: 46px;
+        border-radius: 15px;
         background: linear-gradient(160deg, #E4FF8A, #CBF547);
         box-shadow: 0 10px 22px -10px rgba(212, 255, 91, .9);
         opacity: 0;
@@ -97,20 +97,20 @@
     .m-tab {
         position: relative;
         z-index: 1;
-        height: 52px;
+        height: 46px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 3px;
-        border-radius: 17px;
+        gap: 2px;
+        border-radius: 15px;
         color: rgba(255, 255, 255, .58);
         -webkit-tap-highlight-color: transparent;
         transition: color .25s ease;
     }
 
-    .m-tab svg, .m-tab i { width: 21px; height: 21px; transition: transform .4s var(--m-spring); }
-    .m-tab span { font-size: 12px; font-weight: 700; line-height: 1; }
+    .m-tab svg, .m-tab i { width: 19px; height: 19px; transition: transform .4s var(--m-spring); }
+    .m-tab span { font-size: 11px; font-weight: 700; line-height: 1; }
     .m-tab:active svg { transform: scale(.85); }
     .m-tab.is-active { color: #1A1A1A; }
     .m-tab.is-active svg { transform: translateY(-1px); }
@@ -121,10 +121,10 @@
 
     .m-fab {
         position: absolute;
-        top: -20px;
-        width: 62px;
-        height: 62px;
-        border-radius: 22px;
+        top: -18px;
+        width: 56px;
+        height: 56px;
+        border-radius: 20px;
         display: grid;
         place-items: center;
         color: #1A1A1A;
@@ -138,7 +138,7 @@
         content: '';
         position: absolute;
         inset: -6px;
-        border-radius: 26px;
+        border-radius: 24px;
         border: 2px solid rgba(212, 255, 91, .55);
         animation: m-ripple 2.8s ease-out infinite;
         pointer-events: none;
@@ -149,7 +149,7 @@
         70%, 100% { opacity: 0; transform: scale(1.25); }
     }
 
-    .m-fab svg, .m-fab i { width: 26px; height: 26px; transition: transform .45s var(--m-spring); }
+    .m-fab svg, .m-fab i { width: 24px; height: 24px; transition: transform .45s var(--m-spring); }
     .m-fab:active { transform: scale(.9); }
     .m-fab.is-open { border-radius: 50%; transform: rotate(0); }
     .m-fab.is-open svg { transform: rotate(135deg); }
