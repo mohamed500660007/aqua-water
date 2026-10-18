@@ -126,7 +126,27 @@
         #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:last-child > td { border-bottom: 0; }
 
         #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover { background: transparent !important; }
-        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover > td { background: #FBFDF2; }
+        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover > td { background-color: #FBFDF2; }
+
+        /* فواصل الأعمدة: خط منقّط رأسي في منتصف ارتفاع الصف فقط، على الحافة البادئة لكل خلية
+           بعد الأولى (اليمين في الواجهة العربية) — فيفصل الأعمدة دون أن يثقلها */
+        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr > td + td {
+            background-image: repeating-linear-gradient(to bottom, var(--col-rule, #D9DDE3) 0 3px, transparent 3px 7px);
+            background-repeat: no-repeat;
+            background-size: 1px 56%;
+            background-position: right center;
+        }
+
+        /* عند المرور يتحوّل فاصل الصف إلى ليموني متناسق مع شريط الحافة */
+        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover > td + td { --col-rule: #B5E32A; }
+
+        /* فواصل العناوين: خط قصير صلب بين أسماء الأعمدة */
+        #appContent table:not(.rpt-table):not(.rpt-figures) > thead th + th {
+            background-image: linear-gradient(to bottom, transparent, #CDD2D8 30%, #CDD2D8 70%, transparent);
+            background-repeat: no-repeat;
+            background-size: 1px 18px;
+            background-position: right center;
+        }
 
         /* شريط ليموني على حافة الصف عند المرور */
         #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover > td:first-child { box-shadow: inset -3px 0 0 #C6F23E; }
