@@ -12,12 +12,7 @@
     <x-ui.page-header icon="users" subtitle="إدارة قاعدة العملاء" title="العملاء">
         <x-slot:actions>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر القائمة --}}
-            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
-                href="{{ route('customers.report', request()->only(['q', 'status', 'origin', 'governorate', 'center', 'village', 'sort', 'dir'])) }}"
-                target="_blank" rel="noopener">
-                <x-icon class="w-3.5 h-3.5" name="printer" />
-                تقرير العملاء
-            </a>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('customers.report', request()->only(['q', 'status', 'origin', 'governorate', 'center', 'village', 'sort', 'dir']))">تقرير العملاء</x-ui.btn>
             <x-ui.btn icon="file-spreadsheet" size="sm" variant="soft" :href="route('customers.import.create')">استيراد من إكسيل</x-ui.btn>
             <x-ui.btn icon="user-plus" size="sm" :href="route('customers.create')">عميل جديد</x-ui.btn>
         </x-slot:actions>

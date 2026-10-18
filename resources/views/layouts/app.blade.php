@@ -99,8 +99,14 @@
             transition: opacity .2s ease, visibility 0s linear .2s;
         }
 
-        /* على سطح المكتب يبدأ أسفل شريط التنقل العلوي */
+        /* على سطح المكتب يبدأ أسفل الصف العلوي (سطران تحت 1280px: الشريط ثم العنوان والأزرار) */
         @media (min-width: 1024px) {
+            .page-loader {
+                top: 146px;
+            }
+        }
+
+        @media (min-width: 1280px) {
             .page-loader {
                 top: 76px;
             }
@@ -1242,6 +1248,8 @@
     @include('partials.shell.date-picker')
     @include('partials.shell.topnav-assets')
     @include('partials.shell.mobile-nav-assets')
+    @include('partials.shell.page-chrome-assets')
+    @include('partials.shell.components-assets')
 
     {{-- Livewire يوفّر Alpine.js نفسه (مضمَّن داخل حزمته) ويحقن سكربتاته تلقائيًا،
          فلا حاجة لتحميل Alpine من CDN بشكل منفصل — تحميله مرتين يكسر التطبيق. --}}
@@ -1281,7 +1289,7 @@
             @include('partials.shell.header-mobile')
             @include('partials.shell.header-desktop')
 
-            <div class="flex-1 min-w-0 px-4 pt-3 pb-app sm:px-5 lg:px-8 lg:pt-4 lg:pb-8">
+            <div class="flex-1 min-w-0 px-4 pt-3 pb-app sm:px-5 lg:px-8 lg:pt-6 lg:pb-8">
                 <div class="max-w-[1600px] min-w-0 mx-auto" id="appContent">
                     @yield('content')
                 </div>

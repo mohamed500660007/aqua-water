@@ -12,11 +12,7 @@
     <x-ui.page-header icon="user-cog" subtitle="مستخدمو لوحة التحكم" title="الموظفون">
         <x-slot:actions>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر الصفحة --}}
-            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
-                href="{{ route('users.report', request()->only(['q', 'status', 'role', 'department', 'branch', 'sort', 'dir'])) }}" target="_blank" rel="noopener">
-                <x-icon class="w-3.5 h-3.5" name="printer" />
-                تقرير الموظفين
-            </a>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('users.report', request()->only(['q', 'status', 'role', 'department', 'branch', 'sort', 'dir']))">تقرير الموظفين</x-ui.btn>
             <x-ui.btn icon="user-plus" size="sm" :href="route('users.create')">مستخدم جديد</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>

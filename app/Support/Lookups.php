@@ -54,6 +54,20 @@ class Lookups
         ];
     }
 
+    /** المجموعة التي تنتمي إليها الصفحة الحالية — تظهر كعنوان صغير فوق عنوان الصفحة */
+    public static function activeNavGroup(): ?array
+    {
+        foreach (static::navGroups() as $group) {
+            foreach ($group['items'] as $item) {
+                if (static::isNavActive(route($item['route']))) {
+                    return $group;
+                }
+            }
+        }
+
+        return null;
+    }
+
     /** كل عناصر التنقل في قائمة واحدة مسطّحة */
     public static function navItems(): array
     {

@@ -13,12 +13,7 @@
     <x-ui.page-header icon="store" subtitle="طلبيات البضاعة الواردة إلى المخازن" title="المخزن">
         <x-slot:actions>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر الصفحة --}}
-            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
-                href="{{ route('inventory.purchase-orders.report', request()->only(['q', 'warehouse_id', 'from', 'to'])) }}"
-                target="_blank" rel="noopener">
-                <x-icon class="w-3.5 h-3.5" name="printer" />
-                تقرير المخزن
-            </a>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('inventory.purchase-orders.report', request()->only(['q', 'warehouse_id', 'from', 'to']))">تقرير المخزن</x-ui.btn>
             <x-ui.btn icon="package-plus" size="sm" variant="soft" :href="route('inventory.stock.create')">تسوية / إضافة رصيد</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('inventory.purchase-orders.create')">طلبية جديدة</x-ui.btn>
         </x-slot:actions>

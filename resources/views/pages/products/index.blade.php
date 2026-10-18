@@ -12,12 +12,7 @@
     <x-ui.page-header icon="package" subtitle="كتالوج المنتجات والفلاتر" title="المنتجات">
         <x-slot:actions>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر القائمة --}}
-            <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 bg-brand-dark text-white hover:bg-black text-[11px] px-3 py-2 gap-1.5 rounded-lg"
-                href="{{ route('products.report', request()->only(['q', 'category', 'kind', 'status', 'sort', 'dir'])) }}"
-                target="_blank" rel="noopener">
-                <x-icon class="w-3.5 h-3.5" name="printer" />
-                تقرير المنتجات
-            </a>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('products.report', request()->only(['q', 'category', 'kind', 'status', 'sort', 'dir']))">تقرير المنتجات</x-ui.btn>
             <x-ui.btn icon="package-plus" size="sm" variant="soft" :href="route('inventory.stock.create')">إضافة إلى
                 المخزن</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('products.create')">منتج جديد</x-ui.btn>

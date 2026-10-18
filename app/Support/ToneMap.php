@@ -3,40 +3,10 @@
 namespace App\Support;
 
 /**
- * خريطة الألوان الموحّدة للشارات والأيقونات — تحافظ على نفس نظام التصميم.
+ * خريطة الألوان الموحّدة — ألوان الشارات والمؤشرات نفسها معرّفة كـ ui-tone-* في partials.shell.components-assets.
  */
 class ToneMap
 {
-    /** خلفية ناعمة + لون نص (تُستخدم لمربعات الأيقونات) */
-    public static function soft(string $tone): string
-    {
-        return [
-            'green'  => 'bg-brand-green/25 text-green-700',
-            'blue'   => 'bg-blue-50 text-blue-500',
-            'purple' => 'bg-purple-50 text-purple-600',
-            'amber'  => 'bg-amber-50 text-amber-600',
-            'red'    => 'bg-red-50 text-red-500',
-            'gray'   => 'bg-gray-100 text-gray-500',
-            'teal'   => 'bg-teal-50 text-teal-600',
-            'orange' => 'bg-orange-50 text-orange-500',
-        ][$tone] ?? 'bg-gray-100 text-gray-500';
-    }
-
-    /** شارة الحالة (badge) */
-    public static function badge(string $tone): string
-    {
-        return [
-            'green'  => 'bg-brand-green/30 text-green-700',
-            'blue'   => 'bg-blue-100 text-blue-600',
-            'purple' => 'bg-purple-100 text-purple-600',
-            'amber'  => 'bg-amber-100 text-amber-700',
-            'red'    => 'bg-red-100 text-red-600',
-            'gray'   => 'bg-gray-100 text-gray-600',
-            'teal'   => 'bg-teal-100 text-teal-700',
-            'orange' => 'bg-orange-100 text-orange-600',
-        ][$tone] ?? 'bg-gray-100 text-gray-600';
-    }
-
     /** لون تعبئة صلب (شرائط التقدم) */
     public static function solid(string $tone): string
     {

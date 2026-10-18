@@ -16,13 +16,35 @@
         background: #FAFAFA;
     }
 
-    /* ===== الجزيرة الداكنة ===== */
-    /* الشريط بعرض محتواه فقط ويتوسط الشاشة */
+    /* ===== الصف العلوي: عنوان الصفحة | الشريط | أزرار الصفحة ===== */
+    .tn-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+        align-items: center;
+        gap: 16px;
+    }
+
+    .tn-slot { min-width: 0; display: flex; align-items: center; }
+    .tn-slot-end { justify-content: flex-end; }
+
+    /* الشاشات الأضيق: الشريط في سطر، والعنوان والأزرار في سطر تحته */
+    @media (max-width: 1279px) {
+        .tn-row {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            grid-template-areas: "bar bar" "start end";
+            row-gap: 14px;
+        }
+
+        .tn-bar { grid-area: bar; justify-self: center; }
+        .tn-slot-start { grid-area: start; }
+        .tn-slot-end { grid-area: end; }
+    }
+
+    /* ===== الجزيرة الداكنة — بعرض محتواها فقط ===== */
     .tn-bar {
         position: relative;
         width: fit-content;
         max-width: 100%;
-        margin-inline: auto;
         height: 64px;
         display: flex;
         align-items: center;
@@ -173,10 +195,12 @@
 
     .tn-search { position: relative; }
 
+    /* البحث أيقونة في الوضع العادي، ويتمدد حقلًا عند الضغط عليه */
     .tn-search input {
-        width: 230px;
+        width: 44px;
         height: 42px;
-        padding: 0 40px 0 44px;
+        padding: 0 40px 0 0;
+        cursor: pointer;
         border-radius: 14px;
         border: 1px solid rgba(255, 255, 255, .08);
         background: rgba(255, 255, 255, .06);
@@ -186,10 +210,13 @@
         transition: width .35s var(--tn-ease), background-color .2s ease, border-color .2s ease, box-shadow .2s ease;
     }
 
-    .tn-search input::placeholder { color: rgba(255, 255, 255, .38); }
+    .tn-search input::placeholder { color: transparent; }
+    .tn-search input:focus::placeholder { color: rgba(255, 255, 255, .38); }
 
     .tn-search input:focus {
-        width: 290px;
+        width: 260px;
+        padding-inline-end: 12px;
+        cursor: text;
         background: rgba(255, 255, 255, .1);
         border-color: rgba(212, 255, 91, .45);
         box-shadow: 0 0 0 4px rgba(212, 255, 91, .1);
@@ -205,26 +232,6 @@
         transform: translateY(-50%);
         pointer-events: none;
     }
-
-    .tn-kbd {
-        position: absolute;
-        left: 10px;
-        top: 50%;
-        min-width: 22px;
-        height: 22px;
-        padding: 0 6px;
-        display: grid;
-        place-items: center;
-        border-radius: 7px;
-        border: 1px solid rgba(255, 255, 255, .14);
-        color: rgba(255, 255, 255, .5);
-        font-size: 11px;
-        font-weight: 700;
-        transform: translateY(-50%);
-        pointer-events: none;
-    }
-
-    .tn-search input:focus ~ .tn-kbd { opacity: 0; }
 
     /* ===== اللوحة المنبثقة: لوحة واحدة تتشكّل وتنزلق بين المجموعات ===== */
     .tn-panel {
@@ -531,16 +538,131 @@
         font-weight: 800;
     }
 
-    @media (max-width: 1279px) {
-        .tn-search input { width: 170px; }
-        .tn-search input:focus { width: 220px; }
+    @media (max-width: 1439px) {
         .tn-trigger { padding: 0 11px; }
+    }
+
+    /* ===== عنوان الصفحة (الخانة اليمنى) ===== */
+    .tn-page { min-width: 0; display: flex; align-items: center; gap: 12px; }
+
+    .tn-page-icon {
+        width: 52px;
+        height: 52px;
+        flex-shrink: 0;
+        border-radius: 17px;
+        display: grid;
+        place-items: center;
+        color: #D4FF5B;
+        background:
+            radial-gradient(90% 90% at 100% 0%, rgba(212, 255, 91, .28), transparent 60%),
+            radial-gradient(90% 90% at 0% 100%, rgba(180, 148, 247, .4), transparent 60%),
+            #171717;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1), 0 14px 26px -16px rgba(0, 0, 0, .8);
+        animation: tn-pop .6s cubic-bezier(.34, 1.56, .64, 1) both;
+    }
+
+    .tn-page-icon svg, .tn-page-icon i { width: 23px; height: 23px; }
+
+    @keyframes tn-pop {
+        from { opacity: 0; transform: scale(.6) rotate(-12deg); }
+    }
+
+    .tn-page-title {
+        min-width: 0;
+        font-size: 22px;
+        line-height: 1.3;
+        font-weight: 800;
+        color: #111;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* خط تظليل ليموني خلف العنوان يُرسم من اليمين عند فتح الصفحة */
+    .tn-page-title span {
+        padding: 0 4px;
+        background-image: linear-gradient(transparent 58%, rgba(212, 255, 91, .85) 58%, rgba(212, 255, 91, .85) 90%, transparent 90%);
+        background-repeat: no-repeat;
+        background-position: right;
+        background-size: 100% 100%;
+        animation: tn-mark .9s .15s cubic-bezier(.22, .9, .24, 1) both;
+    }
+
+    @keyframes tn-mark {
+        from { background-size: 0% 100%; }
+    }
+
+    /* ===== أزرار الصفحة (الخانة اليسرى) ===== */
+    .tn-actions { min-width: 0; display: flex; align-items: center; gap: 6px; }
+
+    .tn-dock {
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px;
+        overflow: hidden;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, .85);
+        border: 1px solid #EEF0F2;
+        box-shadow: 0 14px 30px -24px rgba(26, 26, 26, .55);
+        animation: tn-dock-in .55s .1s cubic-bezier(.22, .9, .24, 1) both;
+    }
+
+    .tn-dock > *, .tn-more-menu > * { flex-shrink: 0; }
+
+    @keyframes tn-dock-in {
+        from { opacity: 0; transform: translateY(-8px); }
+    }
+
+    .tn-more { position: relative; flex-shrink: 0; }
+
+    .tn-more > summary {
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        border-radius: 15px;
+        list-style: none;
+        cursor: pointer;
+        color: #D4FF5B;
+        background: linear-gradient(180deg, #282828, #141414);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, .09), 0 10px 20px -14px rgba(0, 0, 0, .85);
+        transition: transform .2s ease;
+    }
+
+    .tn-more > summary::-webkit-details-marker { display: none; }
+    .tn-more > summary svg, .tn-more > summary i { width: 20px; height: 20px; }
+    .tn-more > summary:hover { transform: translateY(-2px); }
+    .tn-more[open] > summary { background: #D4FF5B; color: #1A1A1A; }
+
+    .tn-more-menu {
+        position: absolute;
+        z-index: 50;
+        top: calc(100% + 10px);
+        left: 0;
+        min-width: 230px;
+        display: grid;
+        gap: 6px;
+        padding: 8px;
+        border-radius: 22px;
+        background: #fff;
+        border: 1px solid #EEF0F2;
+        box-shadow: 0 30px 60px -24px rgba(26, 26, 26, .55);
+        animation: tn-menu-in .3s cubic-bezier(.34, 1.4, .64, 1) both;
+        transform-origin: top left;
+    }
+
+    .tn-more-menu .ui-btn, .tn-more-menu form, .tn-more-menu form .ui-btn { width: 100%; }
+
+    @keyframes tn-menu-in {
+        from { opacity: 0; transform: translateY(-6px) scale(.95); }
     }
 
     @media (prefers-reduced-motion: reduce) {
         .tn-bar::before, .tn-feature::before { animation: none; }
         .tn-panel, .tn-panel.is-open, .tn-panel.is-open.is-morphing, .tn-layer, .tn-pill { transition: opacity .15s ease, visibility 0s; }
-        .tn-layer.is-active .tn-item { animation: none; }
+        .tn-layer.is-active .tn-item, .tn-page-icon, .tn-page-title span, .tn-dock, .tn-more-menu { animation: none; }
     }
 </style>
 
@@ -631,6 +753,45 @@
                 if (event.key !== '/' || target.closest('input, textarea, select, [contenteditable]')) return;
                 event.preventDefault();
                 this.$refs.search.focus();
+            },
+        };
+    }
+
+    // أزرار الصفحة بجوار الشريط: لو لم تتسع الخانة تنتقل الأزرار الثانوية (من اليمين) إلى قائمة «المزيد»
+    // واحدًا تلو الآخر حتى يتسع السطر، ويبقى آخر زر — الأساسي — ظاهرًا دائمًا.
+    function actionDock() {
+        return {
+            order: [],
+
+            init() {
+                this.order = Array.from(this.$refs.dock.children);
+                this.refit = () => requestAnimationFrame(() => this.fit());
+
+                // تغيّر مساحة الخانة نفسها (تغيير حجم النافذة أو اتساع الشريط بفتح البحث)
+                this.observer = new ResizeObserver(this.refit);
+                this.observer.observe(this.$el.parentElement);
+
+                // الخط العربي والأيقونات تُرسم بعد الإدراج فتعرّض الأزرار — نعيد القياس بعدها
+                this.$nextTick(this.refit);
+                document.fonts?.ready.then(this.refit);
+                [300, 1200].forEach(delay => setTimeout(this.refit, delay));
+            },
+
+            destroy() {
+                this.observer?.disconnect();
+            },
+
+            fit() {
+                const { dock, menu, more } = this.$refs;
+
+                this.order.forEach(action => dock.appendChild(action));
+                more.hidden = true;
+                more.open = false;
+
+                while (dock.scrollWidth > dock.clientWidth + 1 && dock.children.length > 1) {
+                    more.hidden = false;
+                    menu.appendChild(dock.firstElementChild);
+                }
             },
         };
     }
