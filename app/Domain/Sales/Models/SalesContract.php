@@ -6,6 +6,10 @@ use App\Domain\Complaints\Models\Complaint;
 use App\Domain\Customers\Models\Customer;
 use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Inventory\Models\Warehouse;
+use App\Domain\Maintenance\Enums\MaintenancePackageStatus;
+use App\Domain\Maintenance\Models\CandleSchedule;
+use App\Domain\Maintenance\Models\MaintenanceOperation;
+use App\Domain\Maintenance\Models\MaintenancePackage;
 use App\Domain\Maintenance\Models\MaintenancePlan;
 use App\Domain\Sales\Enums\ContractKind;
 use App\Domain\Sales\Enums\ContractType;
@@ -15,6 +19,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -114,6 +119,35 @@ class SalesContract extends Model
     public function maintenanceItems(): HasMany
     {
         return $this->hasMany(SalesContractMaintenanceItem::class)->orderBy('replacement_date');
+    }
+
+    /** مواعيد تغيير شمعات الجهاز (لعقود البيع المركّبة فقط) */
+    public function candleSchedules(): HasMany
+    {
+        return $this->hasMany(CandleSchedule::class)->orderBy('position');
+    }
+
+    public function maintenanceOperations(): HasMany
+    {
+        return $this->hasMany(MaintenanceOperation::class);
+    }
+
+    /** عقد الصيانة الجملة الساري على هذا الجهاز (واحد على الأكثر) */
+    public function activeMaintenancePackage(): HasOne
+    {
+        return $this->hasOne(MaintenancePackage::class)->where('status', MaintenancePackageStatus::Active->value);
+    }
+
+    /** الأجهزة المركّبة فعلًا — ما يدخل ملف الصيانة */
+    public function scopeInstalledDevices(Builder $query): void
+    {
+        $query->where('kind', ContractKind::Sale)->whereNotNull('installation_date');
+    }
+
+    /** جهاز مركّب فعلًا يدخل ملف الصيانة */
+    public function isInstalledDevice(): bool
+    {
+        return $this->kind === ContractKind::Sale && $this->installation_date !== null;
     }
 
     public function complaints(): HasMany

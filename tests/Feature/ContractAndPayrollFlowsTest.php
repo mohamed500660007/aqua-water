@@ -121,10 +121,7 @@ class ContractAndPayrollFlowsTest extends TestCase
         $this->assertSame(3000.0, $payroll->fresh()->remainingAmount());
 
         $this->get(route('payroll.payslip', $payroll))->assertOk()->assertSee($employee->name)->assertSee('5,000.00');
-
-        $summary = $this->get(route('payroll.index', ['month' => '2026-10']))->viewData('summary');
-        $this->assertSame(2000.0, $summary['paid']);
-        $this->assertSame(3000.0, $summary['remaining']);
+        $this->assertSame(2000.0, (float) $payroll->payments()->sum('amount'));
     }
 
     private function installmentContract(array $attributes = [], ?string $paidAt = null): SalesContract

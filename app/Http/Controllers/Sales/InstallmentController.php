@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sales;
 use App\Domain\Customers\Models\Customer;
 use App\Domain\Sales\Models\SalesContractInstallment;
 use App\Domain\Sales\Services\SalesContractService;
+use App\Domain\Settings\Models\Setting;
 use App\Domain\Users\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\CollectInstallmentRequest;
@@ -49,10 +50,10 @@ class InstallmentController extends Controller
 
         return view('pages.installments.index', [
             'installments' => $installments,
-            'stats' => $this->stats(),
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
             'technicians' => User::query()->whereIn('role', ['محصل', 'فني تركيب'])->orderBy('name')->pluck('name', 'id')->all(),
             'salesReps' => User::query()->whereIn('role', ['مندوب مبيعات', 'مندوبة', 'سكرتارية'])->orderBy('name')->pluck('name', 'id')->all(),
+            'receiptNote' => Setting::get(Setting::RECEIPT_NOTE),
         ]);
     }
 
@@ -63,16 +64,17 @@ class InstallmentController extends Controller
         return back()->with('success', "تم تسجيل تحصيل القسط رقم {$installment->number} بنجاح.");
     }
 
-    public function updateNote(Request $request, SalesContractInstallment $installment): RedirectResponse
+    /** ملاحظة ثابتة تُطبع على كل الإيصالات — تعديلها يسري على كل العملاء دفعة واحدة */
+    public function updateReceiptNote(Request $request): RedirectResponse
     {
         $validated = $request->validate(
-            ['note' => ['nullable', 'string', 'max:255']],
-            ['note.max' => 'الملاحظة يجب ألا تزيد عن 255 حرفًا.'],
+            ['receipt_note' => ['nullable', 'string', 'max:255']],
+            ['receipt_note.max' => 'الملاحظة يجب ألا تزيد عن 255 حرفًا.'],
         );
 
-        $this->contracts->updateInstallmentNote($installment, trim((string) ($validated['note'] ?? '')) ?: null);
+        Setting::put(Setting::RECEIPT_NOTE, trim((string) ($validated['receipt_note'] ?? '')) ?: null);
 
-        return back()->with('success', "تم حفظ ملاحظة القسط رقم {$installment->number} — ستظهر في إيصاله.");
+        return back()->with('success', 'تم حفظ ملاحظة الإيصالات — ستظهر على إيصالات كل العملاء.');
     }
 
     public function receipt(SalesContractInstallment $installment): View|RedirectResponse
@@ -83,7 +85,10 @@ class InstallmentController extends Controller
 
         $installment->load(self::RECEIPT_RELATIONS);
 
-        return view('pages.installments.receipt', ['installment' => $installment]);
+        return view('pages.installments.receipt', [
+            'installment' => $installment,
+            'receiptNote' => Setting::get(Setting::RECEIPT_NOTE),
+        ]);
     }
 
     /** دفتر إيصالات فترة: كل قسط غير محصَّل يستحق بين تاريخين، لطباعتها دفعة واحدة قبل جولة التحصيل */
@@ -108,6 +113,7 @@ class InstallmentController extends Controller
 
         return view('pages.installments.print', [
             'installments' => $installments,
+            'receiptNote' => Setting::get(Setting::RECEIPT_NOTE),
             'from' => $from,
             'to' => $to,
         ]);
@@ -122,34 +128,5 @@ class InstallmentController extends Controller
         $this->contracts->uncollectInstallment($installment);
 
         return back()->with('success', "تم التراجع عن تحصيل القسط رقم {$installment->number}.");
-    }
-
-    /** ملخص الأقساط في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $summary = SalesContractInstallment::query()
-            ->whereHas('contract')
-            ->selectRaw('SUM(CASE WHEN paid_at IS NULL AND due_date < ? THEN 1 ELSE 0 END) as overdue_count', [today()])
-            ->selectRaw('SUM(CASE WHEN paid_at IS NULL AND due_date < ? THEN amount ELSE 0 END) as overdue_amount', [today()])
-            ->selectRaw(
-                'SUM(CASE WHEN paid_at IS NULL AND due_date >= ? AND due_date <= ? THEN amount ELSE 0 END) as due_this_month_amount',
-                [today(), today()->endOfMonth()],
-            )
-            ->selectRaw('SUM(CASE WHEN paid_at IS NULL THEN amount ELSE 0 END) as total_unpaid')
-            ->first();
-
-        $collectedThisMonth = SalesContractInstallment::query()
-            ->whereHas('contract')
-            ->whereNotNull('paid_at')
-            ->whereBetween('paid_at', [today()->startOfMonth(), today()->endOfMonth()])
-            ->sum('paid_amount');
-
-        return [
-            'overdue_count' => (int) ($summary->overdue_count ?? 0),
-            'overdue_amount' => (float) ($summary->overdue_amount ?? 0),
-            'due_this_month_amount' => (float) ($summary->due_this_month_amount ?? 0),
-            'total_unpaid' => (float) ($summary->total_unpaid ?? 0),
-            'collected_this_month' => (float) $collectedThisMonth,
-        ];
     }
 }

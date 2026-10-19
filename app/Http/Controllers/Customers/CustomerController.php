@@ -34,7 +34,6 @@ class CustomerController extends Controller
 
         return view('pages.customers.index', [
             'customers' => $customers,
-            'stats' => $this->stats(),
         ] + $this->lookups());
     }
 
@@ -111,19 +110,6 @@ class CustomerController extends Controller
             // «governorates» في التقرير هو توزيع العملاء، فقائمة المحافظات للفلتر باسم مستقل
             'governoratesList' => collect(Lookups::governorates())->merge(Customer::usedValuesOf('governorate'))->unique()->values()->all(),
         ] + $this->lookups());
-    }
-
-    /** أعداد العملاء حسب الحالة في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $counts = Customer::query()
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        return ['total' => (int) $counts->sum()] + collect(CustomerStatus::cases())
-            ->mapWithKeys(fn (CustomerStatus $status) => [$status->value => (int) $counts->get($status->value, 0)])
-            ->all();
     }
 
     /** القوائم التي تحتاجها الواجهة للفلترة وللنموذج */

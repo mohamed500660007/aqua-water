@@ -158,7 +158,7 @@ class UserRequest extends FormRequest
             'device_commission' => 'عمولة الجهاز',
             'installation_commission' => 'عمولة تركيب الجهاز',
             'marketing_commission' => 'عمولة تسويق الجهاز',
-            'maintenance_commission' => 'عمولة عميل الصيانة',
+            'maintenance_commission' => 'عمولة الصيانة لكل شمعة',
             'hire_date' => 'تاريخ التعيين',
             'notes' => 'الملاحظات',
             'national_id' => 'الرقم القومي',

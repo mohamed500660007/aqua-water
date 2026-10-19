@@ -49,7 +49,6 @@ class ComplaintController extends Controller
 
         return view('pages.complaints.index', [
             'complaints' => $complaints,
-            'stats' => $this->stats(),
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
         ]);
     }
@@ -88,23 +87,6 @@ class ComplaintController extends Controller
         return redirect()
             ->route('complaints.index')
             ->with('success', 'تم حذف الشكوى وإعادة قطع الغيار إلى مصدرها.');
-    }
-
-    /** ملخص الشكاوى في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $summary = Complaint::query()
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw('SUM(CASE WHEN resolved = 1 THEN 1 ELSE 0 END) as resolved')
-            ->selectRaw('COALESCE(SUM(visit_fee), 0) as fees')
-            ->first();
-
-        return [
-            'total' => (int) ($summary->total ?? 0),
-            'resolved' => (int) ($summary->resolved ?? 0),
-            'open' => (int) ($summary->total ?? 0) - (int) ($summary->resolved ?? 0),
-            'fees' => (float) ($summary->fees ?? 0),
-        ];
     }
 
     private function formOptions(): array

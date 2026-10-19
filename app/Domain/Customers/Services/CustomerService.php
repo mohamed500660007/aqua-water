@@ -152,12 +152,17 @@ class CustomerService
     /** رقم آخر كود — يشمل المحذوفين سابقًا حتى لا يتكرر كود قديم */
     private function lastCodeNumber(): int
     {
+        // كود يدوي غير رقمي (مثل CUS-TEST9) يُرتَّب نصيًا بعد الأرقام فيُقرأ صفرًا ويتكرر CUS-00001 —
+        // نتخطاه ونأخذ أول كود رقمي، والقراءة تتوقف عنده بلا تحميل كل الأكواد
         $lastCode = Customer::withTrashed()
             ->where('code', 'like', self::CODE_PREFIX.'%')
             ->orderByDesc('code')
-            ->value('code');
+            ->select('code')
+            ->cursor()
+            ->map(fn (Customer $customer) => substr($customer->code, strlen(self::CODE_PREFIX)))
+            ->first(fn (string $number) => ctype_digit($number));
 
-        return $lastCode ? (int) substr($lastCode, strlen(self::CODE_PREFIX)) : 0;
+        return (int) ($lastCode ?? 0);
     }
 
     private function formatCode(int $number): string

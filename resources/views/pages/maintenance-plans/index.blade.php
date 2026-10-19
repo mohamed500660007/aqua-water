@@ -15,17 +15,6 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
-        <x-ui.kpi hint="في النظام" icon="shield-check" label="إجمالي الخطط" tone="blue" unit="خطة"
-            :value="number_format($stats['total'])" />
-        <x-ui.kpi hint="جاهزة للربط بالعقود" icon="circle-check" label="خطط مفعّلة" tone="green" unit="خطة"
-            :value="number_format($stats['active'])" />
-        <x-ui.kpi hint="غير متاحة للاختيار" icon="circle-pause" label="خطط معطّلة" tone="gray" unit="خطة"
-            :value="number_format($stats['inactive'])" />
-        <x-ui.kpi hint="منتجات الاستبدال" icon="package" label="إجمالي البنود" tone="purple" unit="بند"
-            :value="number_format($stats['items'])" />
-    </div>
-
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
             action="{{ route('maintenance-plans.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }" x-on:submit.prevent="navigateForm($el)">

@@ -5,14 +5,14 @@
 @section('page-subtitle', 'كتالوج المنتجات والفلاتر')
 
 @php
-    $hasFilters = collect(request()->only(['q', 'category', 'kind', 'status']))->filter()->isNotEmpty();
+    $hasFilters = collect(request()->only(['q', 'kind']))->filter()->isNotEmpty();
 @endphp
 
 @section('content')
     <x-ui.page-header icon="package" subtitle="كتالوج المنتجات والفلاتر" title="المنتجات">
         <x-slot:actions>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر القائمة --}}
-            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('products.report', request()->only(['q', 'category', 'kind', 'status', 'sort', 'dir']))">تقرير المنتجات</x-ui.btn>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('products.report', request()->only(['q', 'kind', 'sort', 'dir']))">تقرير المنتجات</x-ui.btn>
             <x-ui.btn icon="package-plus" size="sm" variant="soft" :href="route('inventory.stock.create')">إضافة إلى
                 المخزن</x-ui.btn>
             <x-ui.btn icon="plus" size="sm" :href="route('products.create')">منتج جديد</x-ui.btn>
@@ -28,14 +28,8 @@
             <x-ui.search-input name="q" placeholder="ابحث باسم المنتج أو الكود..." value="{{ request('q') }}"
                 x-model="q" x-on:input.debounce.450ms="navigateForm($el.form)" />
 
-            @if ($categories)
-                <x-ui.select icon="layers" name="category" :options="$categories" placeholder="كل التصنيفات"
-                    :selected="request('category')" x-on:change="navigateForm($el.form)" />
-            @endif
             <x-ui.select icon="shapes" name="kind" :options="$kinds" placeholder="كل الأنواع"
                 :selected="request('kind')" x-on:change="navigateForm($el.form)" />
-            <x-ui.select icon="circle-dot" name="status" :options="$statuses" placeholder="كل الحالات"
-                :selected="request('status')" x-on:change="navigateForm($el.form)" />
 
             <x-ui.btn icon="search" size="md" type="submit">بحث</x-ui.btn>
 
@@ -49,15 +43,13 @@
         </form>
 
         <div class="overflow-x-auto scrollbar-hide">
-            <table class="w-full min-w-[820px]">
+            <table class="w-full min-w-[640px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
                         <x-ui.sort-th column="name">المنتج</x-ui.sort-th>
-                        <x-ui.sort-th column="category">التصنيف</x-ui.sort-th>
+                        <x-ui.th>النوع</x-ui.th>
                         <x-ui.sort-th column="price">سعر البيع</x-ui.sort-th>
-                        <x-ui.th>التكلفة</x-ui.th>
                         <x-ui.th>الرصيد</x-ui.th>
-                        <x-ui.sort-th column="status">الحالة</x-ui.sort-th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
@@ -70,18 +62,14 @@
                                     <p class="text-[11px] text-gray-400" dir="ltr">{{ $product->sku }}</p>
                                 </a>
                             </td>
-                            <td class="px-4 py-3 text-[12px] text-gray-600">{{ $product->category ?? '—' }}
-                                <span class="block text-[10px] text-gray-400">{{ $product->kind->label() }}</span></td>
+                            <td class="px-4 py-3 text-[12px] text-gray-600">{{ $product->kind->label() }}</td>
                             <td class="px-4 py-3">
                                 <span class="text-[13px] font-bold text-gray-800">
                                     {{ number_format((float) $product->price) }}</span>
                                 <span class="text-[10px] text-gray-400">ج.م</span>
                             </td>
-                            <td class="px-4 py-3 text-[12px] text-gray-600">
-                                {{ $product->cost ? number_format((float) $product->cost) . ' ج.م' : '—' }}</td>
                             <td class="px-4 py-3 text-[13px] font-bold text-gray-700">
                                 {{ number_format((int) $product->quantity) }}</td>
-                            <td class="px-4 py-3"><x-ui.badge :status="$product->status->label()" dot /></td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <x-ui.icon-btn icon="eye" label="عرض" :href="route('products.show', $product)" />

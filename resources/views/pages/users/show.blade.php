@@ -129,7 +129,7 @@
                 <x-ui.detail-row label="عمولة القسط" :value="number_format((float) $user->installment_commission, 2) . ' ج.م'" />
                 <x-ui.detail-row label="عمولة تركيب الجهاز" :value="number_format((float) $user->installation_commission, 2) . ' ج.م'" />
                 <x-ui.detail-row label="عمولة تسويق الجهاز" :value="number_format((float) $user->marketing_commission, 2) . ' ج.م'" />
-                <x-ui.detail-row label="عمولة عميل الصيانة" :value="number_format((float) $user->maintenance_commission, 2) . ' ج.م'" />
+                <x-ui.detail-row label="عمولة الصيانة لكل شمعة" :value="number_format((float) $user->maintenance_commission, 2) . ' ج.م'" />
             </div>
 
             @if ($user->notes)

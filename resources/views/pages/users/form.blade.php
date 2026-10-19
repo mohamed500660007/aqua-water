@@ -222,8 +222,8 @@
                     :value="$user?->installation_commission ?? $user?->device_commission ?? 0" />
                 <x-ui.field label="عمولة تسويق الجهاز" name="marketing_commission" type="number" min="0" step="0.01"
                     :value="$user?->marketing_commission ?? 0" />
-                <x-ui.field label="عمولة عميل الصيانة" name="maintenance_commission" type="number" min="0" step="0.01"
-                    :value="$user?->maintenance_commission ?? 0" hint="تُحسب مرة واحدة للعميل مهما كان عدد الشمعات" />
+                <x-ui.field label="عمولة الصيانة لكل شمعة" name="maintenance_commission" type="number" min="0" step="0.01"
+                    :value="$user?->maintenance_commission ?? 0" hint="تُقترح تلقائيًا في الصيانة القطاعي: العمولة × عدد الشمعات" />
             </div>
         </details>
 

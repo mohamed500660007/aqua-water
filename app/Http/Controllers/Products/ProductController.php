@@ -29,7 +29,7 @@ class ProductController extends Controller
         $products = Product::query()
             ->withSum('stockBalances as quantity', 'quantity')
             ->search($request->input('q'))
-            ->applyFilters($request->only(['category', 'kind', 'status']))
+            ->applyFilters($request->only(['kind']))
             ->applySort($request->input('sort'), $request->input('dir'))
             ->paginate(self::PER_PAGE)
             ->withQueryString();

@@ -36,7 +36,6 @@ class PayrollController extends Controller
             'month' => $month,
             'employees' => $employees,
             'rows' => $this->payrolls->monthlyRows($month, $employees->getCollection()),
-            'summary' => $this->paymentSummary($month),
             'roles' => Lookups::roles(),
         ]);
     }
@@ -119,30 +118,6 @@ class PayrollController extends Controller
         $this->payrolls->deletePayment($payment);
 
         return back()->with('success', 'تم حذف دفعة الصرف.');
-    }
-
-    /**
-     * متابعة صرف مرتبات الشهر لكل الموظفين (لا الصفحة الحالية فقط): كم اعتُمد، وكم صُرف، ومن قبض.
-     *
-     * @return array<string, float|int>
-     */
-    private function paymentSummary(CarbonImmutable $month): array
-    {
-        $payrolls = Payroll::query()
-            ->whereDate('month', $month->startOfMonth())
-            ->withSum('payments as paid', 'amount')
-            ->get(['id', 'total']);
-
-        $due = (float) $payrolls->sum('total');
-        $paid = (float) $payrolls->sum('paid');
-
-        return [
-            'approved' => $payrolls->count(),
-            'due' => $due,
-            'paid' => $paid,
-            'remaining' => max(0, round($due - $paid, 2)),
-            'fully_paid' => $payrolls->filter(fn (Payroll $payroll) => (float) $payroll->paid >= (float) $payroll->total - 0.01)->count(),
-        ];
     }
 
     private function month(?string $value): CarbonImmutable

@@ -28,14 +28,13 @@ class UserController extends Controller
     {
         $users = User::query()
             ->search($request->input('q'))
-            ->applyFilters($request->only(['status', 'role', 'department', 'branch']))
+            ->applyFilters($request->only(['status', 'department']))
             ->applySort($request->input('sort'), $request->input('dir'))
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         return view('pages.users.index', [
             'users' => $users,
-            'stats' => $this->stats(),
         ] + $this->lookups());
     }
 
@@ -110,22 +109,6 @@ class UserController extends Controller
         return redirect()
             ->route('users.index')
             ->with('success', "تم حذف حساب «{$user->name}».");
-    }
-
-    /** أعداد المستخدمين حسب الحالة في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $counts = User::query()
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        return [
-            'total' => (int) $counts->sum(),
-            'active' => (int) $counts->get(UserStatus::Active->value, 0),
-            'on_leave' => (int) $counts->get(UserStatus::OnLeave->value, 0),
-            'suspended' => (int) $counts->get(UserStatus::Suspended->value, 0),
-        ];
     }
 
     /** قوائم الأدوار والأقسام والفروع المستخدمة في الفلترة وفي نموذج المستخدم */

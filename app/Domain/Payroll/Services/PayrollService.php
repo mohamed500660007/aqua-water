@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payroll\Services;
 
+use App\Domain\Maintenance\Services\MaintenanceCommissions;
 use App\Domain\Payroll\Models\Payroll;
 use App\Domain\Payroll\Models\PayrollPayment;
 use App\Domain\Sales\Enums\ContractKind;
@@ -14,6 +15,8 @@ use RuntimeException;
 
 class PayrollService
 {
+    public function __construct(private readonly MaintenanceCommissions $maintenance) {}
+
     private const MONEY_KEYS = [
         'base_salary', 'installment_total', 'installment_commission', 'device_sales_total',
         'installation_commission', 'marketing_commission', 'maintenance_commission',
@@ -67,6 +70,8 @@ class PayrollService
             ->selectRaw('sales_rep_id as user_id, SUM(total) as amount_total')
             ->groupBy('sales_rep_id')->get()->keyBy('user_id');
 
+        $maintenance = $this->maintenance->forPeriod($userIds->all(), $from, $to);
+
         $saved = Payroll::query()
             ->with('payments')
             ->whereIn('user_id', $userIds)
@@ -75,7 +80,7 @@ class PayrollService
             ->keyBy('user_id');
 
         return $users->map(function (User $user) use (
-            $installments, $installedDevices, $soldDevices, $salesValue, $saved
+            $installments, $installedDevices, $soldDevices, $salesValue, $maintenance, $saved
         ) {
             $automatic = [
                 'base_salary' => (float) $user->base_salary,
@@ -87,9 +92,9 @@ class PayrollService
                 'marketed_device_count' => (int) ($soldDevices->get($user->id)?->item_count ?? 0),
                 'device_sales_total' => (float) ($salesValue->get($user->id)?->amount_total ?? 0),
                 'marketing_commission' => (float) $user->marketing_commission,
-                // زيارات الصيانة أُزيلت لحين إعادة تصميم وحدة الصيانة؛ العدد يُدخل يدويًا في كشف المرتب
-                'maintenance_count' => 0,
-                'maintenance_commission' => (float) $user->maintenance_commission,
+                // عمولات الصيانة مبالغ محسوبة على كل عملية/عقد صيانة، لا عدد × سعر ثابت
+                'maintenance_count' => $maintenance[$user->id]['count'] ?? 0,
+                'maintenance_commission' => $maintenance[$user->id]['amount'] ?? 0.0,
                 'absence_days' => 0,
                 'regular_deduction' => 0.0,
                 'deduction_reason' => null,
@@ -119,7 +124,7 @@ class PayrollService
             + (int) $values['installment_count'] * (float) $values['installment_commission']
             + (int) $values['installed_device_count'] * (float) $values['installation_commission']
             + (int) $values['marketed_device_count'] * (float) $values['marketing_commission']
-            + (int) $values['maintenance_count'] * (float) $values['maintenance_commission']
+            + (float) $values['maintenance_commission']
             + (float) $values['bonus']
             - (float) $values['regular_deduction']
             - (float) $values['attendance_deduction'],

@@ -18,19 +18,6 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-4 lg:mb-6">
-        <x-ui.kpi compact icon="users" label="إجمالي العملاء" tone="blue" unit="عميل"
-            :value="number_format($stats['total'])" />
-        <x-ui.kpi compact icon="user-check" label="نشط" tone="green" unit="عميل"
-            :value="number_format($stats['active'])" />
-        <x-ui.kpi compact icon="user-x" label="غير نشط" tone="gray" unit="عميل"
-            :value="number_format($stats['inactive'])" />
-        <x-ui.kpi compact icon="undo-2" label="مرتجع" tone="amber" unit="عميل"
-            :value="number_format($stats['returned'])" />
-        <x-ui.kpi compact icon="scale" label="شؤون قانونية" tone="red" unit="عميل"
-            :value="number_format($stats['legal'])" />
-    </div>
-
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {{-- البحث والفلاتر تتم على الخادم مع الحفاظ على الترتيب الحالي --}}
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"

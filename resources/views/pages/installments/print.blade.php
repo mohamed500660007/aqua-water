@@ -59,7 +59,7 @@
         {{-- كل ثلاثة إيصالات في ورقة A4 واحدة تفصل بينها خطوط قصّ --}}
         <div class="page w-full flex flex-col items-center gap-6">
             @foreach ($group as $installment)
-                @include('partials.installments.receipt-sheet', ['installment' => $installment])
+                @include('partials.installments.receipt-sheet', ['installment' => $installment, 'receiptNote' => $receiptNote])
                 @unless ($loop->last)
                     <div class="hcut w-full"></div>
                 @endunless

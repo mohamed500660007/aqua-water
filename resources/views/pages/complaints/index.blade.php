@@ -16,15 +16,6 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-3 gap-2.5 mb-4 lg:mb-6">
-        <x-ui.kpi compact icon="message-square-warning" label="إجمالي الشكاوى" tone="blue" unit="شكوى"
-            :value="number_format($stats['total'])" />
-        <x-ui.kpi compact icon="circle-alert" label="لم تُحل بعد" tone="red" unit="شكوى"
-            :value="number_format($stats['open'])" />
-        <x-ui.kpi compact icon="circle-check" label="تم حلها" tone="green" unit="شكوى"
-            :value="number_format($stats['resolved'])" />
-    </div>
-
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
             action="{{ route('complaints.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }"

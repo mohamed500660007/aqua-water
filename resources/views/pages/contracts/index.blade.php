@@ -19,11 +19,6 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
-        <x-ui.kpi hint="كل العقود" icon="file-text" label="عدد العقود" tone="blue" unit="عقد"
-            :value="number_format($contractsCount)" />
-    </div>
-
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
             action="{{ route('contracts.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }" x-on:submit.prevent="navigateForm($el)">

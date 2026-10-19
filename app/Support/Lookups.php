@@ -42,8 +42,10 @@ class Lookups
                 'label' => 'الصيانة والفريق',
                 'icon' => 'sparkles',
                 'tagline' => 'خدمة ما بعد البيع وكل ما يخص فريق العمل.',
-                'action' => ['route' => 'complaints.create', 'label' => 'تسجيل شكوى', 'icon' => 'message-square-plus'],
+                'action' => ['route' => 'maintenance.operations.create', 'label' => 'تسجيل صيانة', 'icon' => 'wrench'],
                 'items' => [
+                    ['route' => 'maintenance.file',           'icon' => 'calendar-clock',         'label' => 'ملف الصيانة',        'tone' => 'green',  'hint' => 'العملاء المستحقون لتغيير الشمع'],
+                    ['route' => 'maintenance.packages.index', 'icon' => 'package-check',          'label' => 'عقود الصيانة الجملة', 'tone' => 'purple', 'hint' => 'باكيج الشمعات ورصيد كل عميل'],
                     ['route' => 'maintenance-plans.index', 'icon' => 'shield-check',           'label' => 'خطط الصيانة',        'tone' => 'teal',   'hint' => 'مواعيد تغيير الشمعات والقطع'],
                     ['route' => 'complaints.index',        'icon' => 'message-square-warning', 'label' => 'الشكاوى',            'tone' => 'red',    'hint' => 'بلاغات العملاء وزيارات الفنيين'],
                     ['route' => 'gifts.index',             'icon' => 'gift',                   'label' => 'الهدايا',            'tone' => 'purple', 'hint' => 'قطع مجانية للعملاء'],

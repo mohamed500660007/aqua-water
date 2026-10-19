@@ -7,6 +7,7 @@ use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Maintenance\Models\MaintenancePlan;
+use App\Domain\Maintenance\Services\CandleScheduleService;
 use App\Domain\Sales\Data\CollectInstallmentData;
 use App\Domain\Sales\Data\SalesContractData;
 use App\Domain\Sales\Enums\StockSource;
@@ -28,6 +29,7 @@ class SalesContractService
         private readonly ContractPricing $pricing,
         private readonly StockService $stock,
         private readonly EmployeeStockService $employeeStock,
+        private readonly CandleScheduleService $candleSchedules,
     ) {}
 
     /**
@@ -47,6 +49,7 @@ class SalesContractService
             $this->syncInstallments($contract, isNew: true);
             $this->syncMaintenanceSnapshot($contract, $data->maintenancePlanId, isNew: true);
             $this->applyStock($contract, previousQuantities: [], previousSource: null);
+            $this->candleSchedules->syncContract($contract);
 
             return $contract;
         });
@@ -71,15 +74,11 @@ class SalesContractService
             }
 
             $this->applyStock($contract, $previousQuantities, $previousSource);
+            // تاريخ التركيب قد يتغير فتتغير مواعيد شمعات الجهاز
+            $this->candleSchedules->syncContract($contract);
 
             return $contract;
         });
-    }
-
-    /** ملاحظة القسط تُطبع على إيصاله — قابلة للتعديل قبل التحصيل (دفتر الإيصالات) وبعده */
-    public function updateInstallmentNote(SalesContractInstallment $installment, ?string $note): void
-    {
-        $installment->update(['note' => $note]);
     }
 
     /**

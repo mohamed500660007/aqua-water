@@ -46,7 +46,6 @@ class SalesContractController extends Controller
 
         return view('pages.contracts.index', [
             'contracts' => $contracts,
-            'contractsCount' => SalesContract::query()->count(),
             'types' => ContractType::options(),
             'kinds' => ContractKind::options(),
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),

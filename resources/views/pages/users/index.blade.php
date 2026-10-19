@@ -5,28 +5,17 @@
 @section('page-subtitle', 'إدارة مستخدمي لوحة التحكم')
 
 @php
-    $hasFilters = collect(request()->only(['q', 'status', 'role', 'department', 'branch']))->filter()->isNotEmpty();
+    $hasFilters = collect(request()->only(['q', 'status', 'department']))->filter()->isNotEmpty();
 @endphp
 
 @section('content')
     <x-ui.page-header icon="user-cog" subtitle="مستخدمو لوحة التحكم" title="الموظفون">
         <x-slot:actions>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق، وتحمل نفس فلاتر الصفحة --}}
-            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('users.report', request()->only(['q', 'status', 'role', 'department', 'branch', 'sort', 'dir']))">تقرير الموظفين</x-ui.btn>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('users.report', request()->only(['q', 'status', 'department', 'sort', 'dir']))">تقرير الموظفين</x-ui.btn>
             <x-ui.btn icon="user-plus" size="sm" :href="route('users.create')">مستخدم جديد</x-ui.btn>
         </x-slot:actions>
     </x-ui.page-header>
-
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
-        <x-ui.kpi hint="في كل الفروع" icon="users" label="إجمالي المستخدمين" tone="blue" unit="مستخدم"
-            :value="number_format($stats['total'])" />
-        <x-ui.kpi hint="على رأس العمل" icon="user-check" label="نشطون" tone="green" unit="مستخدم"
-            :value="number_format($stats['active'])" />
-        <x-ui.kpi hint="خارج العمل مؤقتًا" icon="calendar" label="في إجازة" tone="amber" unit="مستخدم"
-            :value="number_format($stats['on_leave'])" />
-        <x-ui.kpi hint="بدون وصول للنظام" icon="user-x" label="موقوفون" tone="red" unit="مستخدم"
-            :value="number_format($stats['suspended'])" />
-    </div>
 
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {{-- البحث والفلاتر تتم على الخادم مع الحفاظ على الترتيب الحالي --}}
@@ -38,12 +27,8 @@
             <x-ui.search-input name="q" placeholder="ابحث بالاسم أو البريد أو رقم الهاتف..." value="{{ request('q') }}"
                 x-model="q" x-on:input.debounce.450ms="navigateForm($el.form)" />
 
-            <x-ui.select icon="briefcase" name="role" :options="$roles" placeholder="كل الأدوار" :selected="request('role')"
-                x-on:change="navigateForm($el.form)" />
             <x-ui.select icon="layers" name="department" :options="$departments" placeholder="كل الأقسام"
                 :selected="request('department')" x-on:change="navigateForm($el.form)" />
-            <x-ui.select icon="map-pin" name="branch" :options="$branches" placeholder="كل الفروع" :selected="request('branch')"
-                x-on:change="navigateForm($el.form)" />
             <x-ui.select icon="circle-dot" name="status" :options="$statuses" placeholder="كل الحالات"
                 :selected="request('status')" x-on:change="navigateForm($el.form)" />
 
@@ -59,13 +44,11 @@
         </form>
 
         <div class="overflow-x-auto scrollbar-hide">
-            <table class="w-full min-w-[880px]">
+            <table class="w-full min-w-[720px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
                         <x-ui.sort-th column="name">المستخدم</x-ui.sort-th>
-                        <x-ui.sort-th column="role">الدور</x-ui.sort-th>
                         <x-ui.th>القسم</x-ui.th>
-                        <x-ui.th>الفرع</x-ui.th>
                         <x-ui.th>الهاتف</x-ui.th>
                         <x-ui.sort-th column="status">الحالة</x-ui.sort-th>
                         <x-ui.sort-th column="created_at">تاريخ الإضافة</x-ui.sort-th>
@@ -85,16 +68,7 @@
                                     </div>
                                 </a>
                             </td>
-                            <td class="px-4 py-3">
-                                @if ($user->role)
-                                    <span
-                                        class="text-[11px] font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full whitespace-nowrap">{{ $user->role }}</span>
-                                @else
-                                    <span class="text-[12px] text-gray-400">—</span>
-                                @endif
-                            </td>
                             <td class="px-4 py-3 text-[12px] text-gray-600">{{ $user->department ?? '—' }}</td>
-                            <td class="px-4 py-3 text-[12px] text-gray-600">{{ $user->branch ?? '—' }}</td>
                             <td class="px-4 py-3 text-[12px] font-semibold text-gray-700" dir="ltr">
                                 {{ $user->phone ?? '—' }}</td>
                             <td class="px-4 py-3"><x-ui.badge :status="$user->status->label()" dot /></td>

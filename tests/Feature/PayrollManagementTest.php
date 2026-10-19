@@ -62,8 +62,9 @@ class PayrollManagementTest extends TestCase
         $this->assertSame(1, $row['values']['installment_count']);
         $this->assertSame(2, $row['values']['installed_device_count']);
         $this->assertSame(2, $row['values']['marketed_device_count']);
-        // لا مصدر تلقائي لعدد الصيانة بعد إزالة زيارات الصيانة — يُدخل يدويًا
+        // لا عمليات صيانة مسجّلة لهذا الموظف في الشهر
         $this->assertSame(0, $row['values']['maintenance_count']);
+        $this->assertSame(0.0, $row['values']['maintenance_commission']);
     }
 
     public function test_payroll_can_be_manually_adjusted_and_saved_as_a_monthly_snapshot(): void
@@ -75,7 +76,7 @@ class PayrollManagementTest extends TestCase
             'installment_count' => 0, 'installment_commission' => 10,
             'installed_device_count' => 3, 'installation_commission' => 300,
             'marketed_device_count' => 0, 'marketing_commission' => 300,
-            'maintenance_count' => 2, 'maintenance_commission' => 300,
+            'maintenance_count' => 2, 'maintenance_commission' => 600,
             'regular_deduction' => 50, 'deduction_reason' => 'خصم',
             'attendance_deduction' => 25, 'bonus' => 100, 'note' => null,
         ])->assertRedirect(route('payroll.index', ['month' => '2026-09']));
@@ -90,7 +91,7 @@ class PayrollManagementTest extends TestCase
             'installment_count' => 0, 'installment_commission' => 10,
             'installed_device_count' => 4, 'installation_commission' => 300,
             'marketed_device_count' => 0, 'marketing_commission' => 300,
-            'maintenance_count' => 2, 'maintenance_commission' => 300,
+            'maintenance_count' => 2, 'maintenance_commission' => 600,
             'regular_deduction' => 50, 'deduction_reason' => 'خصم',
             'attendance_deduction' => 25, 'bonus' => 100, 'note' => 'تم التعديل',
         ])->assertSessionHasNoErrors();

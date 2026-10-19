@@ -1,6 +1,6 @@
 @extends('layouts.print')
 
-@section('title', 'إيصال تحصيل — '.$installment->contract->code)
+@section('title', 'إيصال تحصيل — '.$installment->contract->customer?->name)
 
 @section('toolbar')
     <header class="no-print w-full max-w-5xl mb-5 flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
@@ -10,7 +10,7 @@
             </div>
             <div>
                 <h1 class="text-base font-bold text-gray-800 leading-tight">إيصال تحصيل قسط</h1>
-                <p class="text-xs text-gray-500">{{ $installment->contract->customer?->name }} — القسط {{ $installment->number }}</p>
+                <p class="text-xs text-gray-500">{{ $installment->contract->customer?->name }} — القسط {{ \App\Support\ArabicOrdinal::of($installment->number) }}</p>
             </div>
         </div>
         <div class="flex items-center gap-2">
@@ -30,6 +30,6 @@
 
 @section('sheets')
     <div class="page w-full flex flex-col items-center">
-        @include('partials.installments.receipt-sheet', ['installment' => $installment])
+        @include('partials.installments.receipt-sheet', ['installment' => $installment, 'receiptNote' => $receiptNote])
     </div>
 @endsection

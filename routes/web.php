@@ -8,6 +8,10 @@ use App\Http\Controllers\Inventory\CustodySettlementController;
 use App\Http\Controllers\Inventory\EmployeeStockController;
 use App\Http\Controllers\Inventory\PurchaseOrderController;
 use App\Http\Controllers\Inventory\StockMovementController;
+use App\Http\Controllers\Maintenance\CandleStageController;
+use App\Http\Controllers\Maintenance\MaintenanceFileController;
+use App\Http\Controllers\Maintenance\MaintenanceOperationController;
+use App\Http\Controllers\Maintenance\MaintenancePackageController;
 use App\Http\Controllers\Maintenance\MaintenancePlanController;
 use App\Http\Controllers\Payroll\PayrollController;
 use App\Http\Controllers\Products\ProductController;
@@ -43,7 +47,7 @@ Route::prefix('dashboard')->group(function () {
     Route::post('installments/{installment}/collect', [InstallmentController::class, 'collect'])->name('installments.collect');
     Route::delete('installments/{installment}/collect', [InstallmentController::class, 'uncollect'])->name('installments.uncollect');
     Route::get('installments/{installment}/receipt', [InstallmentController::class, 'receipt'])->name('installments.receipt');
-    Route::patch('installments/{installment}/note', [InstallmentController::class, 'updateNote'])->name('installments.note.update');
+    Route::put('installments/receipt-note', [InstallmentController::class, 'updateReceiptNote'])->name('installments.receipt-note.update');
 
     // قبل الـ resource حتى لا يُفهم «report» كمعرّف عميل
     Route::get('customers/report', [CustomerController::class, 'report'])->name('customers.report');
@@ -67,6 +71,19 @@ Route::prefix('dashboard')->group(function () {
 
     Route::resource('maintenance-plans', MaintenancePlanController::class)
         ->parameters(['maintenance-plans' => 'plan']);
+
+    // ملف الصيانة وتتبع الشمعات
+    Route::get('maintenance', [MaintenanceFileController::class, 'index'])->name('maintenance.file');
+    Route::get('maintenance/stages', [CandleStageController::class, 'edit'])->name('maintenance.stages.edit');
+    Route::put('maintenance/stages', [CandleStageController::class, 'update'])->name('maintenance.stages.update');
+    Route::get('maintenance/operations', [MaintenanceOperationController::class, 'index'])->name('maintenance.operations.index');
+    Route::get('maintenance/operations/create', [MaintenanceOperationController::class, 'create'])->name('maintenance.operations.create');
+    Route::post('maintenance/operations', [MaintenanceOperationController::class, 'store'])->name('maintenance.operations.store');
+    Route::delete('maintenance/operations/{operation}', [MaintenanceOperationController::class, 'destroy'])->name('maintenance.operations.destroy');
+    Route::get('maintenance/packages', [MaintenancePackageController::class, 'index'])->name('maintenance.packages.index');
+    Route::get('maintenance/packages/create', [MaintenancePackageController::class, 'create'])->name('maintenance.packages.create');
+    Route::post('maintenance/packages', [MaintenancePackageController::class, 'store'])->name('maintenance.packages.store');
+    Route::delete('maintenance/packages/{package}', [MaintenancePackageController::class, 'destroy'])->name('maintenance.packages.destroy');
 
     Route::get('complaints', [ComplaintController::class, 'index'])->name('complaints.index');
     Route::get('complaints/create', [ComplaintController::class, 'create'])->name('complaints.create');

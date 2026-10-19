@@ -6,6 +6,7 @@ use App\Domain\Inventory\Data\StockMovementData;
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\StockService;
+use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Enums\ProductStatus;
 use App\Domain\Products\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -100,11 +101,10 @@ class ProductManagementTest extends TestCase
         $target = Product::factory()->create([
             'name' => 'ممبرين 100 جالون',
             'sku' => 'AQ-MEM-100',
-            'category' => 'ممبرين وأغشية',
-            'status' => ProductStatus::Active,
+            'kind' => ProductKind::Cartridge,
         ]);
 
-        Product::factory()->create(['name' => 'منتج آخر', 'category' => 'إكسسوارات', 'status' => ProductStatus::Inactive]);
+        Product::factory()->create(['name' => 'منتج آخر', 'kind' => ProductKind::Device]);
 
         foreach (['ممبرين', 'AQ-MEM-100'] as $term) {
             $results = $this->get(route('products.index', ['q' => $term]))->viewData('products');
@@ -112,12 +112,10 @@ class ProductManagementTest extends TestCase
             $this->assertTrue($results->first()->is($target));
         }
 
-        $filtered = $this->get(route('products.index', [
-            'category' => 'ممبرين وأغشية',
-            'status' => ProductStatus::Active->value,
-        ]))->viewData('products');
+        $filtered = $this->get(route('products.index', ['kind' => ProductKind::Cartridge->value]))->viewData('products');
 
         $this->assertCount(1, $filtered->items());
+        $this->assertTrue($filtered->first()->is($target));
     }
 
     public function test_show_page_lists_balances_and_recent_movements(): void

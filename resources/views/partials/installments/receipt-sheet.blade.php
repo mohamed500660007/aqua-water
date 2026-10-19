@@ -1,6 +1,7 @@
 {{-- إيصال تحصيل واحد (1024×460px تصميمًا، يُصغَّر عند الطباعة ليصفّ ثلاثة في ورقة A4):
      الإيصال الذي يُسلَّم للعميل + كعب جانبي يُقص ويبقى مع الإدارة. للأقساط غير المحصَّلة
-     (دفتر الإيصالات) تُترك خانات التحصيل فارغة لتُكتب باليد. --}}
+     (دفتر الإيصالات) تُترك خانات التحصيل فارغة لتُكتب باليد.
+     $receiptNote: الملاحظة الثابتة لكل الإيصالات (تُمرَّر من الصفحة مرة واحدة لا تُقرأ لكل إيصال). --}}
 @php
     $contract = $installment->contract;
     $customer = $contract->customer;
@@ -12,6 +13,8 @@
     $dueDate = $installment->due_date->format('Y-m-d');
     $collectedAt = $installment->paid_at;
     $collector = $installment->collectedBy?->name;
+    $installmentNo = \App\Support\ArabicOrdinal::of($installment->number);
+    $companyPhone = config('app.company_phone');
     $blank = '';
 @endphp
 
@@ -22,6 +25,7 @@
             <div>
                 <p class="rc-company">أكوا ووتر</p>
                 <p class="rc-tagline">لأنظمة تنقية المياه</p>
+                <p class="rc-tagline">تليفون الشركة: <span class="num" dir="ltr">{{ $companyPhone }}</span></p>
             </div>
 
             <h1 class="rc-title">إيصال تحصيل قسط</h1>
@@ -61,24 +65,22 @@
             </tr>
             <tr>
                 <th>التليفون</th>
-                <td class="num" dir="ltr" style="text-align: right">{{ $phone ?: '—' }}</td>
-                <th>رقم العقد</th>
-                <td class="num" dir="ltr" style="text-align: right">{{ $contract->code }}</td>
+                <td class="num" colspan="3" dir="ltr" style="text-align: right">{{ $phone ?: '—' }}</td>
                 <th>المنتج</th>
                 <td title="{{ $product }}">{{ $product ?: '—' }}</td>
             </tr>
             <tr>
                 <th>رقم القسط</th>
-                <td class="num">{{ $installment->number }}{{ $contract->installments_count ? ' من ' . $contract->installments_count : '' }}</td>
+                <td>{{ $installmentNo }}{{ $contract->installments_count ? ' من ' . $contract->installments_count : '' }}</td>
                 <th>تاريخ الاستحقاق</th>
                 <td class="num" dir="ltr" style="text-align: right">{{ $dueDate }}</td>
                 <th>اسم المحصّل</th>
                 <td>{{ $collector ?? $blank }}</td>
             </tr>
-            {{-- ملاحظة القسط المكتوبة عند التحصيل؛ إن لم توجد تبقى الخانة فارغة لتُكتب باليد --}}
+            {{-- الملاحظة الثابتة لكل الإيصالات؛ إن لم تُضبط تبقى الخانة فارغة لتُكتب باليد --}}
             <tr>
                 <th>ملاحظات</th>
-                <td class="rc-note" colspan="5">{{ $installment->note }}</td>
+                <td class="rc-note" colspan="5">{{ $receiptNote ?? '' }}</td>
             </tr>
         </table>
 
@@ -112,8 +114,7 @@
         <dl>
             <div><dt>العميل</dt><dd title="{{ $customer?->name }}">{{ $customer?->name ?? '—' }}</dd></div>
             <div><dt>كود العميل</dt><dd class="num" dir="ltr">{{ $customer?->code ?? '—' }}</dd></div>
-            <div><dt>رقم العقد</dt><dd class="num" dir="ltr">{{ $contract->code }}</dd></div>
-            <div><dt>القسط / الاستحقاق</dt><dd class="num">{{ $installment->number }} — <span dir="ltr">{{ $dueDate }}</span></dd></div>
+            <div><dt>القسط / الاستحقاق</dt><dd>{{ $installmentNo }} — <span class="num" dir="ltr">{{ $dueDate }}</span></dd></div>
             <div><dt>القرية / المركز</dt><dd>{{ collect([$customer?->village, $customer?->center])->filter()->join(' — ') ?: '—' }}</dd></div>
             <div><dt>التليفون</dt><dd class="num" dir="ltr">{{ $phone ?: '—' }}</dd></div>
         </dl>

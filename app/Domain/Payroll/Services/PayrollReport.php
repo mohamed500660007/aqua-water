@@ -122,7 +122,7 @@ class PayrollReport
         $row['installments'] += $values['installment_count'] * $values['installment_commission'];
         $row['installation'] += $values['installed_device_count'] * $values['installation_commission'];
         $row['marketing'] += $values['marketed_device_count'] * $values['marketing_commission'];
-        $row['maintenance'] += $values['maintenance_count'] * $values['maintenance_commission'];
+        $row['maintenance'] += $values['maintenance_commission'];
         $row['bonus'] += $values['bonus'];
         $row['deductions'] += $values['regular_deduction'] + $values['attendance_deduction'];
         $row['net'] += $monthly['total'];

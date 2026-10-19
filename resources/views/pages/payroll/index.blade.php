@@ -13,17 +13,6 @@
         </x-slot:actions>
     </x-ui.page-header>
 
-    <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4 mb-4 lg:mb-6">
-        <x-ui.kpi icon="file-check" label="كشوف معتمدة" tone="blue" unit="موظف"
-            :value="number_format($summary['approved'])" :hint="'شهر ' . $month->format('Y-m')" />
-        <x-ui.kpi icon="banknote" label="إجمالي المستحق" tone="purple" unit="ج.م"
-            :value="number_format($summary['due'], 2)" hint="صافي الكشوف المعتمدة" />
-        <x-ui.kpi icon="hand-coins" label="تم صرفه" tone="green" unit="ج.م"
-            :value="number_format($summary['paid'], 2)" :hint="$summary['fully_paid'] . ' موظف قبض بالكامل'" />
-        <x-ui.kpi icon="hourglass" label="متبقي للصرف" tone="amber" unit="ج.م"
-            :value="number_format($summary['remaining'], 2)" hint="دفعات جزئية أو لم تُصرف" />
-    </div>
-
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <form method="GET" action="{{ route('payroll.index') }}"
             class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(240px,1fr)_220px_180px_auto] gap-3 p-4 border-b border-gray-100">
@@ -108,8 +97,8 @@
                                 <x-ui.field label="عمولة التركيب" name="installation_commission" type="number" min="0" step="0.01" x-model.number="installation_commission" />
                                 <x-ui.field label="أجهزة تم تسويقها" name="marketed_device_count" type="number" min="0" step="1" x-model.number="marketed_device_count" />
                                 <x-ui.field label="عمولة التسويق" name="marketing_commission" type="number" min="0" step="0.01" x-model.number="marketing_commission" />
-                                <x-ui.field label="عملاء الصيانة" name="maintenance_count" type="number" min="0" step="1" x-model.number="maintenance_count" />
-                                <x-ui.field label="عمولة الصيانة" name="maintenance_commission" type="number" min="0" step="0.01" x-model.number="maintenance_commission" />
+                                <x-ui.field label="عمليات الصيانة" name="maintenance_count" type="number" min="0" step="1" x-model.number="maintenance_count" />
+                                <x-ui.field label="إجمالي عمولة الصيانة" name="maintenance_commission" type="number" min="0" step="0.01" x-model.number="maintenance_commission" />
                                 <x-ui.field label="أيام الغياب" name="absence_days" type="number" min="0" max="31" step="1" x-model.number="absence_days" />
                                 <x-ui.field label="خصم بصمة / غياب" name="attendance_deduction" type="number" min="0" step="0.01" x-model.number="attendance_deduction" />
                                 <x-ui.field label="خصم عادي" name="regular_deduction" type="number" min="0" step="0.01" x-model.number="regular_deduction" />
@@ -187,7 +176,7 @@
         // نفس معادلة PayrollService::total() — للمعاينة الفورية فقط، والحفظ يعيد الحساب على الخادم
         function payrollRow(values) {
             return { ...values,
-                get total() { return Number(this.base_salary || 0) + Number(this.installment_count || 0) * Number(this.installment_commission || 0) + Number(this.installed_device_count || 0) * Number(this.installation_commission || 0) + Number(this.marketed_device_count || 0) * Number(this.marketing_commission || 0) + Number(this.maintenance_count || 0) * Number(this.maintenance_commission || 0) + Number(this.bonus || 0) - Number(this.regular_deduction || 0) - Number(this.attendance_deduction || 0); },
+                get total() { return Number(this.base_salary || 0) + Number(this.installment_count || 0) * Number(this.installment_commission || 0) + Number(this.installed_device_count || 0) * Number(this.installation_commission || 0) + Number(this.marketed_device_count || 0) * Number(this.marketing_commission || 0) + Number(this.maintenance_commission || 0) + Number(this.bonus || 0) - Number(this.regular_deduction || 0) - Number(this.attendance_deduction || 0); },
                 money(value) { return new Intl.NumberFormat('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value); }
             };
         }

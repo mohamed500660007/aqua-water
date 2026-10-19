@@ -30,6 +30,17 @@ class CustomerManagementTest extends TestCase
         ], $overrides);
     }
 
+    /** انحدار: كود يدوي غير رقمي (CUS-TEST9) كان يُقرأ «آخر كود» فيعود الترقيم لـ CUS-00001 المكرر */
+    public function test_new_customer_code_skips_non_numeric_codes(): void
+    {
+        Customer::factory()->create(['code' => 'CUS-00014']);
+        Customer::factory()->create(['code' => 'CUS-TEST9'])->delete();
+
+        $this->post(route('customers.store'), $this->validPayload())->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('customers', ['code' => 'CUS-00015']);
+    }
+
     public function test_index_lists_customers(): void
     {
         $customer = Customer::factory()->create(['name' => 'منى خالد إبراهيم']);

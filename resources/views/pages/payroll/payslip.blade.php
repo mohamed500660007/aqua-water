@@ -10,7 +10,7 @@
         ['عمولة التحصيل', $payroll->installment_count . ' قسط بإجمالي ' . number_format((float) $payroll->installment_total, 2) . ' ج.م × ' . number_format((float) $payroll->installment_commission, 2), $line($payroll->installment_count, (float) $payroll->installment_commission)],
         ['عمولة التركيب', $payroll->installed_device_count . ' جهاز × ' . number_format((float) $payroll->installation_commission, 2), $line($payroll->installed_device_count, (float) $payroll->installation_commission)],
         ['عمولة البيع (التسويق)', $payroll->marketed_device_count . ' جهاز بقيمة ' . number_format((float) $payroll->device_sales_total, 2) . ' ج.م × ' . number_format((float) $payroll->marketing_commission, 2), $line($payroll->marketed_device_count, (float) $payroll->marketing_commission)],
-        ['عمولة الصيانة', $payroll->maintenance_count . ' عميل × ' . number_format((float) $payroll->maintenance_commission, 2), $line($payroll->maintenance_count, (float) $payroll->maintenance_commission)],
+        ['عمولة الصيانة', $payroll->maintenance_count . ' عملية', (float) $payroll->maintenance_commission],
         ['مكافأة', '', (float) $payroll->bonus],
     ];
 

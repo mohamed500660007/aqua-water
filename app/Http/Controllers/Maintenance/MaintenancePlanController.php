@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Maintenance;
 
 use App\Domain\Maintenance\Enums\MaintenancePlanStatus;
 use App\Domain\Maintenance\Models\MaintenancePlan;
-use App\Domain\Maintenance\Models\MaintenancePlanItem;
 use App\Domain\Maintenance\Services\MaintenancePlanService;
 use App\Domain\Products\Models\Product;
 use App\Http\Controllers\Controller;
@@ -31,7 +30,6 @@ class MaintenancePlanController extends Controller
 
         return view('pages.maintenance-plans.index', [
             'plans' => $plans,
-            'stats' => $this->stats(),
             'statuses' => MaintenancePlanStatus::options(),
         ]);
     }
@@ -80,22 +78,6 @@ class MaintenancePlanController extends Controller
         return redirect()
             ->route('maintenance-plans.index')
             ->with('success', "تم حذف خطة «{$plan->name}».");
-    }
-
-    /** أعداد الخطط حسب الحالة في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $counts = MaintenancePlan::query()
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        return [
-            'total' => (int) $counts->sum(),
-            'active' => (int) $counts->get(MaintenancePlanStatus::Active->value, 0),
-            'inactive' => (int) $counts->get(MaintenancePlanStatus::Inactive->value, 0),
-            'items' => MaintenancePlanItem::query()->count(),
-        ];
     }
 
     private function formOptions(): array

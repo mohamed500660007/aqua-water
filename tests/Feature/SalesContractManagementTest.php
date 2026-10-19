@@ -597,16 +597,15 @@ class SalesContractManagementTest extends TestCase
         );
     }
 
-    public function test_index_shows_only_the_contracts_count_card(): void
+    public function test_index_shows_the_table_directly_without_summary_cards(): void
     {
         $this->post(route('contracts.store'), $this->validPayload());
 
         $this->get(route('contracts.index'))
             ->assertOk()
-            ->assertViewHas('contractsCount', 1)
-            ->assertSee('عدد العقود')
-            ->assertDontSee('إجمالي التعاقدات')
-            ->assertDontSee('المتبقي للتحصيل')
+            ->assertViewMissing('contractsCount')
+            ->assertDontSee('عدد العقود')
+            ->assertSee(SalesContract::sole()->code)
             ->assertSee(route('contracts.report'), false);
     }
 
@@ -729,14 +728,17 @@ class SalesContractManagementTest extends TestCase
         ]);
         $this->post(route('contracts.store'), $this->installmentPayload());
         $installment = SalesContract::sole()->installments()->first();
-        $installment->update(['paid_at' => today(), 'paid_amount' => $installment->amount, 'note' => 'دفع نقدًا للمندوب في المنزل']);
+        $installment->update(['paid_at' => today(), 'paid_amount' => $installment->amount]);
 
         $this->get(route('installments.receipt', $installment))
             ->assertOk()
             ->assertSeeInOrder(['المحافظة', 'الدقهلية', 'المركز', 'المنصورة', 'القرية', 'ميت مزاح'])
             ->assertSee('شارع المدرسة بجوار المسجد')
             ->assertSee('ملاحظات')
-            ->assertSee('دفع نقدًا للمندوب في المنزل')
+            // رقم القسط ترتيبي، ورقم تليفون الشركة مطبوع، ولا يظهر رقم العقد
+            ->assertSee('الأول من')
+            ->assertSee('01100984920')
+            ->assertDontSee('رقم العقد')
             ->assertSee('data-navigate-track="reload"', false);
 
         // رابط الإيصال يفتح تحميلًا كاملًا في تبويب جديد، لا تنقّل SPA يُفقده تنسيقه
@@ -746,25 +748,26 @@ class SalesContractManagementTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<a[^>]*href="'.$receiptLink.'"[^>]*wire:navigate/', $html);
     }
 
-    public function test_a_receipt_note_can_be_added_to_any_installment_and_is_printed(): void
+    public function test_one_receipt_note_is_printed_on_every_customers_receipt(): void
     {
         $this->post(route('contracts.store'), $this->installmentPayload(['first_due_date' => today()->toDateString()]));
         $installment = SalesContract::sole()->installments()->first();
 
-        $this->patch(route('installments.note.update', $installment), ['note' => '  يُحصَّل بعد الساعة 5 مساءً  '])
+        $this->put(route('installments.receipt-note.update'), ['receipt_note' => '  يرجى الاحتفاظ بالإيصال  '])
             ->assertSessionHasNoErrors();
-        $this->assertSame('يُحصَّل بعد الساعة 5 مساءً', $installment->refresh()->note);
 
-        // يظهر في القائمة، وفي دفتر إيصالات الشهر قبل التحصيل
-        $this->get(route('installments.index'))->assertOk()->assertSee('يُحصَّل بعد الساعة 5 مساءً');
+        // تظهر في خانة الملاحظة بصفحة الأقساط، وفي دفتر إيصالات الشهر لكل العملاء
+        $this->get(route('installments.index'))->assertOk()->assertSee('يرجى الاحتفاظ بالإيصال');
         $this->get(route('installments.print', ['from' => today()->startOfMonth()->toDateString(), 'to' => today()->endOfMonth()->toDateString()]))
-            ->assertOk()->assertSee('يُحصَّل بعد الساعة 5 مساءً');
+            ->assertOk()->assertSee('يرجى الاحتفاظ بالإيصال');
 
-        $this->patch(route('installments.note.update', $installment), ['note' => str_repeat('م', 256)])
-            ->assertSessionHasErrors('note');
+        // تعديلها مرة واحدة يغيّرها للكل
+        $installment->update(['paid_at' => today(), 'paid_amount' => $installment->amount]);
+        $this->put(route('installments.receipt-note.update'), ['receipt_note' => 'ملاحظة جديدة للكل']);
+        $this->get(route('installments.receipt', $installment))->assertSee('ملاحظة جديدة للكل')->assertDontSee('يرجى الاحتفاظ بالإيصال');
 
-        $this->patch(route('installments.note.update', $installment), ['note' => ''])->assertSessionHasNoErrors();
-        $this->assertNull($installment->refresh()->note);
+        $this->put(route('installments.receipt-note.update'), ['receipt_note' => str_repeat('م', 256)])
+            ->assertSessionHasErrors('receipt_note');
     }
 
     public function test_the_collection_form_keeps_an_existing_receipt_note(): void
