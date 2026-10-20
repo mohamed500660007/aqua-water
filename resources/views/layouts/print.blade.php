@@ -153,13 +153,6 @@
             white-space: nowrap;
         }
 
-        /* الملاحظة تُطبع كاملة على أكثر من سطر — لا تُقص بنقاط في نسخة العميل (الحد الأقصى 255 حرفًا) */
-        .rc-fields td.rc-note {
-            white-space: normal;
-            font-size: 11.5px;
-            line-height: 1.45;
-            padding: 3px 8px;
-        }
 
         .rc-bottom {
             display: grid;
@@ -230,6 +223,17 @@
             font-weight: 600;
             color: var(--ink-muted);
             min-height: 14px;
+        }
+
+        .rc-terms {
+            margin-top: 6px;
+            padding: 5px 8px;
+            border: 1px dashed var(--line);
+            border-radius: 6px;
+            font-size: 11.5px;
+            font-weight: 800;
+            text-align: center;
+            white-space: nowrap;
         }
 
         .rc-footnote {

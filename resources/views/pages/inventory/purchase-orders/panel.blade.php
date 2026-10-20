@@ -60,8 +60,8 @@
                     <tr>
                         <th class="px-4 py-2.5 text-right font-bold">#</th>
                         <th class="px-3 py-2.5 text-right font-bold">المنتج</th>
-                        <th class="px-3 py-2.5 text-right font-bold">النوع</th>
-                        <th class="px-4 py-2.5 text-left font-bold">الكمية</th>
+                        <th class="px-3 py-2.5 text-right font-bold">الكمية</th>
+                        <th class="px-4 py-2.5 text-left font-bold">سعر الشراء</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
@@ -72,15 +72,17 @@
                                 <p class="font-bold text-gray-700">{{ $item->product?->name ?? 'منتج محذوف' }}</p>
                                 <p class="text-[10.5px] text-gray-400" dir="ltr">{{ $item->product?->sku }}</p>
                             </td>
-                            <td class="px-3 py-2.5 text-gray-500">{{ $item->product?->kind?->label() ?? '—' }}</td>
-                            <td class="px-4 py-2.5 text-left font-black text-gray-800">{{ number_format($item->quantity) }}</td>
+                            <td class="px-3 py-2.5 font-black text-gray-800">{{ number_format($item->quantity) }}</td>
+                            <td class="px-4 py-2.5 text-left font-bold text-gray-700">
+                                {{ $item->unit_price !== null ? number_format((float) $item->unit_price, 2).' ج.م' : '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
                 <tfoot class="bg-gray-50 border-t border-gray-200">
                     <tr>
-                        <td class="px-4 py-2.5 font-black text-gray-800" colspan="3">الإجمالي</td>
-                        <td class="px-4 py-2.5 text-left font-black text-gray-800">{{ number_format($pieces) }}</td>
+                        <td class="px-4 py-2.5 font-black text-gray-800" colspan="2">الإجمالي</td>
+                        <td class="px-3 py-2.5 font-black text-gray-800">{{ number_format($pieces) }}</td>
+                        <td class="px-4 py-2.5 text-left font-black text-gray-800">{{ number_format((float) $order->total_amount, 2) }} ج.م</td>
                     </tr>
                 </tfoot>
             </table>

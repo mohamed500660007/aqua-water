@@ -21,7 +21,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, SoftDeletes;
 
-    public const SORTABLE = ['name', 'email', 'role', 'status', 'created_at'];
+    public const SORTABLE = ['id', 'name', 'email', 'role', 'status', 'hire_date', 'created_at'];
 
     /** الأدوار التي يجوز أن تُسلَّم لها عهدة من المخزن */
     public const CUSTODY_ROLES = ['مندوب مبيعات', 'فني تركيب'];
@@ -36,6 +36,12 @@ class User extends Authenticatable
     /**
      * @var list<string>
      */
+    /** كود الموظف المعروض (EMP-0007) — مشتق من المعرّف كباقي أكواد المستندات */
+    public function code(): string
+    {
+        return 'EMP-'.str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
     protected $fillable = [
         'name',
         'email',
@@ -126,10 +132,13 @@ class User extends Authenticatable
         }
 
         $digits = Digits::normalize($term);
+        // كود الموظف المعروض (EMP-0007) مشتق من المعرّف
+        $codeId = preg_match('/^EMP-?0*(\d+)$/i', $term, $match) ? (int) $match[1] : 0;
 
-        $query->where(function (Builder $query) use ($term, $digits) {
+        $query->where(function (Builder $query) use ($term, $digits, $codeId) {
             $query->where('name', 'like', "%{$term}%")
-                ->orWhere('email', 'like', "%{$term}%");
+                ->orWhere('email', 'like', "%{$term}%")
+                ->when($codeId > 0, fn (Builder $query) => $query->orWhere('id', $codeId));
 
             if ($digits !== '') {
                 $query->orWhere('phone', 'like', "%{$digits}%")

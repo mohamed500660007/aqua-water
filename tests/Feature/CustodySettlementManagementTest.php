@@ -217,7 +217,10 @@ class CustodySettlementManagementTest extends TestCase
         $this->post(route('inventory.custody-settlements.store'), $this->payload(['type' => 'positive', 'post' => 0]));
         $settlement = CustodySettlement::firstOrFail();
 
-        $this->get(route('inventory.custody-settlements.index'))->assertOk()->assertSee('ST-0001');
+        $this->get(route('inventory.custody-settlements.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['كود الموظف', 'الموظف', 'الكمية', 'التسوية', 'إجراءات'])
+            ->assertSeeInOrder([$this->technician->code(), $this->technician->name, 'تسوية بالموجب', 'مسودة']);
         $this->get(route('inventory.custody-settlements.create', ['user_id' => $this->technician->id]))->assertOk();
         $this->get(route('inventory.custody-settlements.edit', $settlement))->assertOk();
         $this->get(route('inventory.custody-settlements.panel', $settlement))->assertOk()->assertSee($this->candle->name);

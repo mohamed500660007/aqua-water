@@ -28,7 +28,6 @@ class CustodySettlementController extends Controller
         $settlements = CustodySettlement::query()
             ->applyFilters($request->only(['user_id', 'type', 'status']))
             ->with('user:id,name')
-            ->withCount('items')
             ->withSum('items as pieces', 'quantity')
             ->orderByDesc('settlement_date')
             ->orderByDesc('id')

@@ -15,6 +15,7 @@ use App\Domain\Gifts\Services\GiftService;
 use App\Domain\Inventory\Data\EmployeeHandoverData;
 use App\Domain\Inventory\Data\ProductQuantityData;
 use App\Domain\Inventory\Data\PurchaseOrderData;
+use App\Domain\Inventory\Data\PurchaseOrderItemData;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\PurchaseOrderService;
@@ -169,16 +170,17 @@ class DemoDataSeeder extends Seeder
                 $date = $this->today;
             }
 
+            // سعر الشراء = تكلفة المنتج، أو 60% من سعر البيع إن لم تُسجَّل تكلفة
+            $line = fn ($p, int $quantity) => new PurchaseOrderItemData($p->id, $quantity, round((float) ($p->cost ?? $p->price * 0.6), 2));
             $items = [
-                ...$products->get(ProductKind::Device->value, collect())->map(fn ($p) => new ProductQuantityData($p->id, mt_rand(16, 22))),
-                ...$products->get(ProductKind::Cartridge->value, collect())->map(fn ($p) => new ProductQuantityData($p->id, mt_rand(80, 140))),
-                ...$products->get(ProductKind::Other->value, collect())->map(fn ($p) => new ProductQuantityData($p->id, mt_rand(5, 15))),
+                ...$products->get(ProductKind::Device->value, collect())->map(fn ($p) => $line($p, mt_rand(16, 22))),
+                ...$products->get(ProductKind::Cartridge->value, collect())->map(fn ($p) => $line($p, mt_rand(80, 140))),
+                ...$products->get(ProductKind::Other->value, collect())->map(fn ($p) => $line($p, mt_rand(5, 15))),
             ];
 
             $this->purchaseOrders->create(new PurchaseOrderData(
                 warehouseId: $warehouse->id,
                 orderDate: $date->toDateString(),
-                totalAmount: mt_rand(50, 75) * 1000,
                 items: $items,
                 supplier: $suppliers[$monthsAgo % count($suppliers)],
                 note: 'طلبية دورية',

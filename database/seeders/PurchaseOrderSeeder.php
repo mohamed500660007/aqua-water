@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Domain\Inventory\Data\ProductQuantityData;
 use App\Domain\Inventory\Data\PurchaseOrderData;
+use App\Domain\Inventory\Data\PurchaseOrderItemData;
 use App\Domain\Inventory\Models\PurchaseOrder;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\PurchaseOrderService;
@@ -78,7 +78,6 @@ class PurchaseOrderSeeder extends Seeder
             $orders->create(new PurchaseOrderData(
                 warehouseId: (int) $warehouses[$index % $warehouses->count()],
                 orderDate: $today->subDays($daysAgo)->toDateString(),
-                totalAmount: $this->amount($products->flatten(), $items),
                 items: $items,
                 supplier: self::SUPPLIERS[$supplier],
                 note: 'فاتورة مورد رقم '.(2400 + $index * 7).' '.self::MARKER,
@@ -92,38 +91,26 @@ class PurchaseOrderSeeder extends Seeder
 
     /**
      * يختار لكل بند منتجًا من النوع المطلوب بالتناوب، ويدمج تكرار نفس المنتج في بند واحد
-     * (الطلبية لا تقبل المنتج مرتين).
+     * (الطلبية لا تقبل المنتج مرتين). سعر الشراء = تكلفة المنتج، أو 60% من سعر البيع إن لم تُسجَّل تكلفة.
      *
-     * @return list<ProductQuantityData>
+     * @return list<PurchaseOrderItemData>
      */
     private function items($products, array $lines, int $orderIndex): array
     {
         $quantities = [];
+        $prices = [];
 
         foreach ($lines as $line => [$kind, $quantity]) {
             $pool = $products->get($kind) ?? $products->get(ProductKind::Other->value) ?? $products->first();
             $product = $pool[($orderIndex + $line) % $pool->count()];
             $quantities[$product->id] = ($quantities[$product->id] ?? 0) + $quantity;
+            $prices[$product->id] = round((float) ($product->cost ?? $product->price * 0.6), 2);
         }
 
         return array_map(
-            fn (int $productId, int $quantity) => new ProductQuantityData($productId, $quantity),
+            fn (int $productId, int $quantity) => new PurchaseOrderItemData($productId, $quantity, $prices[$productId]),
             array_keys($quantities),
             array_values($quantities),
         );
-    }
-
-    /** مبلغ الطلبية = الكمية × التكلفة (أو 60% من السعر إن لم تُسجَّل تكلفة)، مقرّبًا لأقرب 50 جنيهًا */
-    private function amount($products, array $items): float
-    {
-        $byId = $products->keyBy('id');
-
-        $total = array_sum(array_map(function (ProductQuantityData $item) use ($byId) {
-            $product = $byId[$item->productId];
-
-            return $item->quantity * (float) ($product->cost ?? $product->price * 0.6);
-        }, $items));
-
-        return round($total / 50) * 50;
     }
 }

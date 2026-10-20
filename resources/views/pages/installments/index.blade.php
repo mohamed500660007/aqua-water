@@ -43,21 +43,6 @@
             @endforeach
         </div>
 
-        {{-- ملاحظة واحدة ثابتة تُطبع في خانة «ملاحظات» بكل الإيصالات — تعديلها يسري على كل العملاء --}}
-        <form class="px-4 py-3 border-b border-gray-100 bg-[#FBFDF2] flex flex-col sm:flex-row sm:items-center gap-2.5"
-            action="{{ route('installments.receipt-note.update') }}" method="POST">
-            @csrf
-            @method('PUT')
-            <label class="flex items-center gap-2 shrink-0 text-[12px] font-bold text-gray-700" for="receipt_note">
-                <x-icon class="w-4 h-4 text-green-700" name="sticky-note" />
-                ملاحظة الإيصالات
-            </label>
-            <input class="ui-input flex-1 h-11 px-3.5 text-[13px]" id="receipt_note" maxlength="255" name="receipt_note"
-                placeholder="تُطبع على إيصالات كل العملاء — مثال: يرجى الاحتفاظ بالإيصال لحين انتهاء الأقساط" type="text"
-                value="{{ old('receipt_note', $receiptNote) }}" />
-            <x-ui.btn icon="check" size="sm" type="submit">حفظ للكل</x-ui.btn>
-        </form>
-
         <form class="p-4 flex flex-col lg:flex-row lg:items-center gap-2.5 border-b border-gray-100"
             action="{{ route('installments.index') }}" method="GET" x-data="{ q: @js(request('q', '')) }"
             x-on:submit.prevent="navigateForm($el)">
@@ -86,11 +71,12 @@
             <table class="w-full min-w-[860px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
+                        <x-ui.th>الكود</x-ui.th>
                         <x-ui.th>العميل</x-ui.th>
-                        <x-ui.th>العقد</x-ui.th>
-                        <x-ui.th>القسط</x-ui.th>
-                        <x-ui.sort-th column="due_date">تاريخ الاستحقاق</x-ui.sort-th>
+                        <x-ui.th>رقم القسط</x-ui.th>
+                        <x-ui.sort-th column="due_date">تاريخ القسط</x-ui.sort-th>
                         <x-ui.sort-th column="amount">المبلغ</x-ui.sort-th>
+                        <x-ui.th>متأخر / خلال الشهر</x-ui.th>
                         <x-ui.th>الحالة</x-ui.th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
@@ -101,12 +87,15 @@
                         @php($contract = $installment->contract)
                         <tr class="hover:bg-gray-50/70 transition-colors">
                             <td class="px-4 py-3">
+                                <p class="text-[12px] font-bold text-gray-700" dir="ltr">{{ $contract->customer?->code ?? '—' }}</p>
+                                <a class="text-[11px] text-gray-400 hover:underline" dir="ltr"
+                                    href="{{ route('contracts.show', $installment->sales_contract_id) }}" wire:navigate>
+                                    {{ $contract->code }}</a>
+                            </td>
+                            <td class="px-4 py-3">
                                 <a class="text-[13px] font-bold text-gray-800 truncate block"
                                     href="{{ route('customers.show', $contract->customer_id) }}" wire:navigate>
                                     {{ $contract->customer?->name ?? '—' }}</a>
-                                @if ($phone = $contract->customer?->primaryPhone?->phone)
-                                    <a class="text-[11px] text-gray-400" dir="ltr" href="tel:{{ $phone }}">{{ $phone }}</a>
-                                @endif
                                 @if ($installment->note)
                                     <p class="mt-1 flex items-start gap-1 text-[11px] text-amber-700 max-w-[240px]" title="ملاحظة التحصيل">
                                         <x-icon class="w-3 h-3 mt-0.5 shrink-0" name="sticky-note" />
@@ -114,12 +103,7 @@
                                     </p>
                                 @endif
                             </td>
-                            <td class="px-4 py-3">
-                                <a class="text-[12px] font-bold text-gray-700" dir="ltr"
-                                    href="{{ route('contracts.show', $installment->sales_contract_id) }}" wire:navigate>
-                                    {{ $contract->code }}</a>
-                            </td>
-                            <td class="px-4 py-3 text-[13px] font-bold text-gray-700">#{{ $installment->number }}</td>
+                            <td class="px-4 py-3 text-[13px] font-bold text-gray-700">{{ $installment->number }}</td>
                             <td class="px-4 py-3 text-[12px] text-gray-600" dir="ltr">
                                 {{ $installment->due_date->format('Y-m-d') }}</td>
                             <td class="px-4 py-3">
@@ -128,10 +112,18 @@
                                 <span class="text-[10px] text-gray-400">ج.م</span>
                             </td>
                             <td class="px-4 py-3">
-                                <x-ui.badge :tone="$status['tone']" dot>{{ $status['label'] }}</x-ui.badge>
                                 @if ($installment->isPaid())
-                                    <p class="text-[10px] text-gray-400 mt-1" dir="ltr">
-                                        {{ $installment->paid_at->format('Y-m-d') }}</p>
+                                    <span class="text-[12px] text-gray-400">—</span>
+                                @else
+                                    <x-ui.badge :tone="$status['tone']" dot>{{ $status['value'] === 'due_this_month' ? 'خلال الشهر' : $status['label'] }}</x-ui.badge>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @if ($installment->isPaid())
+                                    <x-ui.badge tone="green" dot>تم</x-ui.badge>
+                                    <p class="text-[10px] text-gray-400 mt-1" dir="ltr">{{ $installment->paid_at->format('Y-m-d') }}</p>
+                                @else
+                                    <x-ui.badge tone="gray" dot>لم يتم</x-ui.badge>
                                 @endif
                             </td>
                             <td class="px-4 py-3">
@@ -163,7 +155,7 @@
                         </tr>
                         @if (! $installment->isPaid())
                             <tr x-cloak x-show="openId === {{ $installment->id }}">
-                                <td class="px-4 pb-4 pt-0" colspan="7">
+                                <td class="px-4 pb-4 pt-0" colspan="8">
                                     <form action="{{ route('installments.collect', $installment) }}" class="rounded-2xl bg-gray-50 border border-gray-100 p-3.5"
                                         method="POST">
                                         @csrf

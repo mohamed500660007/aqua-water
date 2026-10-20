@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Inventory;
 use App\Domain\Inventory\Exceptions\InsufficientStockException;
 use App\Domain\Inventory\Models\PurchaseOrder;
 use App\Domain\Inventory\Models\PurchaseOrderItem;
+use App\Domain\Inventory\Models\StockBalance;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\PurchaseOrderReport;
 use App\Domain\Inventory\Services\PurchaseOrderService;
@@ -29,16 +30,28 @@ class PurchaseOrderController extends Controller
             ->search($request->input('q'))
             ->applyFilters($request->only(['warehouse_id', 'from', 'to']));
 
-        $orders = (clone $filtered)
-            ->with(['warehouse:id,name', 'items:id,purchase_order_id,product_id,quantity', 'items.product:id,name'])
-            ->withSum('items as pieces', 'quantity')
-            ->orderByDesc('order_date')
-            ->orderByDesc('id')
+        // صف لكل منتج في كل طلبية؛ الرصيد الحالي للمنتج في مخزن الطلبية باستعلام فرعي داخل نفس الاستعلام
+        $items = PurchaseOrderItem::query()
+            ->join('purchase_orders', 'purchase_orders.id', '=', 'purchase_order_items.purchase_order_id')
+            ->whereIn('purchase_order_items.purchase_order_id', PurchaseOrder::query()
+                ->applyFilters($request->only(['warehouse_id', 'from', 'to']))
+                ->select('id'))
+            ->search($request->input('q'))
+            ->select('purchase_order_items.*')
+            ->addSelect(['current_balance' => StockBalance::query()
+                ->select('quantity')
+                ->whereColumn('stock_balances.product_id', 'purchase_order_items.product_id')
+                ->whereColumn('stock_balances.warehouse_id', 'purchase_orders.warehouse_id')
+                ->limit(1)])
+            ->with(['product:id,sku,name', 'purchaseOrder:id,warehouse_id,order_date', 'purchaseOrder.warehouse:id,name'])
+            ->orderByDesc('purchase_orders.order_date')
+            ->orderByDesc('purchase_orders.id')
+            ->orderBy('purchase_order_items.id')
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         return view('pages.inventory.purchase-orders.index', [
-            'orders' => $orders,
+            'items' => $items,
             'summary' => $this->summary($filtered),
             'warehouses' => Warehouse::options(),
         ]);

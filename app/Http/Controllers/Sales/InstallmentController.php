@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Sales;
 use App\Domain\Customers\Models\Customer;
 use App\Domain\Sales\Models\SalesContractInstallment;
 use App\Domain\Sales\Services\SalesContractService;
-use App\Domain\Settings\Models\Setting;
 use App\Domain\Users\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\CollectInstallmentRequest;
@@ -37,7 +36,6 @@ class InstallmentController extends Controller
             ->with([
                 'contract:id,code,customer_id,remaining,installer_id,sales_rep_id,installation_date',
                 'contract.customer:id,name,code',
-                'contract.customer.primaryPhone',
                 'contract.installer:id,name',
                 'contract.salesRep:id,name',
                 'contract.items:id,sales_contract_id,product_name',
@@ -53,7 +51,6 @@ class InstallmentController extends Controller
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
             'technicians' => User::query()->whereIn('role', ['محصل', 'فني تركيب'])->orderBy('name')->pluck('name', 'id')->all(),
             'salesReps' => User::query()->whereIn('role', ['مندوب مبيعات', 'مندوبة', 'سكرتارية'])->orderBy('name')->pluck('name', 'id')->all(),
-            'receiptNote' => Setting::get(Setting::RECEIPT_NOTE),
         ]);
     }
 
@@ -62,19 +59,6 @@ class InstallmentController extends Controller
         $this->contracts->collectInstallment($installment, $request->toData());
 
         return back()->with('success', "تم تسجيل تحصيل القسط رقم {$installment->number} بنجاح.");
-    }
-
-    /** ملاحظة ثابتة تُطبع على كل الإيصالات — تعديلها يسري على كل العملاء دفعة واحدة */
-    public function updateReceiptNote(Request $request): RedirectResponse
-    {
-        $validated = $request->validate(
-            ['receipt_note' => ['nullable', 'string', 'max:255']],
-            ['receipt_note.max' => 'الملاحظة يجب ألا تزيد عن 255 حرفًا.'],
-        );
-
-        Setting::put(Setting::RECEIPT_NOTE, trim((string) ($validated['receipt_note'] ?? '')) ?: null);
-
-        return back()->with('success', 'تم حفظ ملاحظة الإيصالات — ستظهر على إيصالات كل العملاء.');
     }
 
     public function receipt(SalesContractInstallment $installment): View|RedirectResponse
@@ -87,7 +71,6 @@ class InstallmentController extends Controller
 
         return view('pages.installments.receipt', [
             'installment' => $installment,
-            'receiptNote' => Setting::get(Setting::RECEIPT_NOTE),
         ]);
     }
 
@@ -113,7 +96,6 @@ class InstallmentController extends Controller
 
         return view('pages.installments.print', [
             'installments' => $installments,
-            'receiptNote' => Setting::get(Setting::RECEIPT_NOTE),
             'from' => $from,
             'to' => $to,
         ]);

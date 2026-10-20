@@ -336,24 +336,44 @@ class SalesContractManagementTest extends TestCase
         $this->assertDatabaseCount('sales_contracts', 0);
     }
 
-    public function test_it_snapshots_the_maintenance_plan_items(): void
+    public function test_it_snapshots_the_seven_plan_candles_dated_from_the_installation_date(): void
     {
-        $plan = MaintenancePlan::factory()
-            ->withItems([['product_id' => $this->filter->id, 'replacement_date' => '2026-11-01']])
-            ->create(['name' => 'باقة سنوية']);
+        $plan = MaintenancePlan::current();
 
-        $this->post(route('contracts.store'), $this->validPayload(['maintenance_plan_id' => $plan->id]));
+        $this->post(route('contracts.store'), $this->validPayload([
+            'maintenance_plan_id' => $plan->id,
+            'contract_date' => '2026-01-31',
+            'installation_date' => '2026-01-31',
+        ]))->assertSessionHasNoErrors();
 
         $contract = SalesContract::sole();
 
-        $this->assertCount(1, $contract->maintenanceItems);
-        $this->assertSame('شمعة قطنية', $contract->maintenanceItems->first()->product_name);
+        // الأولى بعد شهر، الثانية بعد 4، الثالثة بعد 6، ومن الرابعة للسابعة بعد سنة — بلا تجاوز لنهاية الشهر
+        $this->assertSame(
+            [
+                ['الشمعة الأولى', '2026-02-28'], ['الشمعة الثانية', '2026-05-31'], ['الشمعة الثالثة', '2026-07-31'],
+                ['الشمعة الرابعة', '2027-01-31'], ['الشمعة الخامسة', '2027-01-31'], ['الشمعة السادسة', '2027-01-31'],
+                ['الشمعة السابعة', '2027-01-31'],
+            ],
+            $contract->maintenanceItems->map(fn ($item) => [$item->product_name, $item->replacement_date->format('Y-m-d')])->all(),
+        );
+        // الشمع ينطبق على كل الفلاتر — لا منتج مرتبط بالشمعة
+        $this->assertNull($contract->maintenanceItems->first()->product_id);
 
-        // تعديل الخطة لاحقًا لا يمس نسخة العقد
-        $plan->items()->update(['replacement_date' => '2027-05-01']);
-        $plan->update(['name' => 'باقة معدّلة']);
+        // تصحيح تاريخ التركيب يعيد حساب المواعيد
+        $this->put(route('contracts.update', $contract), $this->validPayload([
+            'maintenance_plan_id' => $plan->id,
+            'contract_date' => '2026-01-31',
+            'installation_date' => '2026-03-10',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame('2026-04-10', $contract->fresh()->maintenanceItems->first()->replacement_date->format('Y-m-d'));
 
-        $this->assertSame('2026-11-01', $contract->fresh()->maintenanceItems->first()->replacement_date->format('Y-m-d'));
+        // إلغاء الخطة من العقد يحذف شمعاته
+        $this->put(route('contracts.update', $contract), $this->validPayload([
+            'contract_date' => '2026-01-31',
+            'installation_date' => '2026-03-10',
+        ]))->assertSessionHasNoErrors();
+        $this->assertCount(0, $contract->fresh()->maintenanceItems);
     }
 
     public function test_updating_a_contract_adjusts_stock_by_the_difference(): void
@@ -734,9 +754,10 @@ class SalesContractManagementTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder(['المحافظة', 'الدقهلية', 'المركز', 'المنصورة', 'القرية', 'ميت مزاح'])
             ->assertSee('شارع المدرسة بجوار المسجد')
-            ->assertSee('ملاحظات')
-            // رقم القسط ترتيبي، ورقم تليفون الشركة مطبوع، ولا يظهر رقم العقد
-            ->assertSee('الأول من')
+            // رقم القسط ترتيبي فقط (بلا «من» العدد الكلي)، ويوم التحصيل الشهري، ورقم تليفون الشركة مطبوع، ولا يظهر رقم العقد
+            ->assertSee('<td>الأول</td>', false)
+            ->assertDontSee('الأول من')
+            ->assertSeeInOrder(['يوم التحصيل', 'يوم', (string) $installment->due_date->day, 'شهريًا'])
             ->assertSee('01100984920')
             ->assertDontSee('رقم العقد')
             ->assertSee('data-navigate-track="reload"', false);
@@ -748,26 +769,19 @@ class SalesContractManagementTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<a[^>]*href="'.$receiptLink.'"[^>]*wire:navigate/', $html);
     }
 
-    public function test_one_receipt_note_is_printed_on_every_customers_receipt(): void
+    public function test_every_receipt_prints_the_same_fixed_late_fee_terms(): void
     {
+        $terms = 'في حالة تأخير القسط للشهر التالي تُضاف 50 جنيه — في حالة التأخير ليوم آخر إضافة 10 جنيه';
         $this->post(route('contracts.store'), $this->installmentPayload(['first_due_date' => today()->toDateString()]));
         $installment = SalesContract::sole()->installments()->first();
 
-        $this->put(route('installments.receipt-note.update'), ['receipt_note' => '  يرجى الاحتفاظ بالإيصال  '])
-            ->assertSessionHasNoErrors();
-
-        // تظهر في خانة الملاحظة بصفحة الأقساط، وفي دفتر إيصالات الشهر لكل العملاء
-        $this->get(route('installments.index'))->assertOk()->assertSee('يرجى الاحتفاظ بالإيصال');
+        // الشرط ثابت في دفتر إيصالات الشهر وفي إيصال القسط المحصَّل، ولا توجد خانة لتعديله
         $this->get(route('installments.print', ['from' => today()->startOfMonth()->toDateString(), 'to' => today()->endOfMonth()->toDateString()]))
-            ->assertOk()->assertSee('يرجى الاحتفاظ بالإيصال');
+            ->assertOk()->assertSee($terms);
 
-        // تعديلها مرة واحدة يغيّرها للكل
         $installment->update(['paid_at' => today(), 'paid_amount' => $installment->amount]);
-        $this->put(route('installments.receipt-note.update'), ['receipt_note' => 'ملاحظة جديدة للكل']);
-        $this->get(route('installments.receipt', $installment))->assertSee('ملاحظة جديدة للكل')->assertDontSee('يرجى الاحتفاظ بالإيصال');
-
-        $this->put(route('installments.receipt-note.update'), ['receipt_note' => str_repeat('م', 256)])
-            ->assertSessionHasErrors('receipt_note');
+        $this->get(route('installments.receipt', $installment))->assertOk()->assertSee($terms);
+        $this->get(route('installments.index'))->assertOk()->assertDontSee('name="receipt_note"', false);
     }
 
     public function test_the_collection_form_keeps_an_existing_receipt_note(): void

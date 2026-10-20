@@ -8,11 +8,8 @@ use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
-use App\Domain\Maintenance\Enums\MaintenancePackageStatus;
-use App\Domain\Maintenance\Models\CandleSchedule;
-use App\Domain\Maintenance\Models\MaintenanceOperation;
-use App\Domain\Maintenance\Models\MaintenancePackage;
-use App\Domain\Maintenance\Services\CandleStageService;
+use App\Domain\Maintenance\Enums\MaintenanceType;
+use App\Domain\Maintenance\Models\MaintenancePlan;
 use App\Domain\Payroll\Services\PayrollService;
 use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Models\Product;
@@ -28,224 +25,217 @@ class MaintenanceFileTest extends TestCase
 {
     use RefreshDatabase;
 
-    private Warehouse $warehouse;
-
-    private Product $sediment;
-
-    private Product $carbon;
-
     private User $technician;
 
-    private User $salesRep;
+    private Product $candle;
 
-    private SalesContract $device;
+    private SalesContract $mohamed;
 
-    private CarbonImmutable $installedAt;
+    private SalesContract $emad;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->warehouse = Warehouse::factory()->create();
-        $this->sediment = Product::factory()->create(['name' => 'شمعة قطنية', 'price' => 150, 'kind' => ProductKind::Cartridge]);
-        $this->carbon = Product::factory()->create(['name' => 'شمعة كربون', 'price' => 100, 'kind' => ProductKind::Cartridge]);
-        $this->technician = User::factory()->create(['role' => 'فني تركيب', 'maintenance_commission' => 5]);
-        $this->salesRep = User::factory()->create(['role' => 'مندوبة', 'maintenance_commission' => 5]);
+        $warehouse = Warehouse::factory()->create();
+        $this->candle = Product::factory()->create(['name' => 'شمعة قطنية', 'kind' => ProductKind::Cartridge]);
+        $this->technician = User::factory()->create(['role' => User::INSTALLER_ROLE, 'maintenance_commission' => 5]);
 
-        foreach ([$this->sediment, $this->carbon] as $candle) {
-            app(StockService::class)->record(new StockMovementData(
-                productId: $candle->id, warehouseId: $this->warehouse->id, type: StockMovementType::In,
-                quantity: 30, movedAt: today()->toDateString(),
-            ));
-        }
+        app(StockService::class)->record(new StockMovementData(
+            productId: $this->candle->id, warehouseId: $warehouse->id, type: StockMovementType::In,
+            quantity: 20, movedAt: today()->toDateString(),
+        ));
+        app(EmployeeStockService::class)->handOver($this->technician->id, $this->candle->id, $warehouse->id, 10, today()->toDateString());
 
-        // المرحلة 1 كل شهر، والمرحلة 2 كل شهرين
-        app(CandleStageService::class)->save([
-            1 => ['product_id' => $this->sediment->id, 'interval_months' => 1],
-            2 => ['product_id' => $this->carbon->id, 'interval_months' => 2],
-        ]);
-
-        $this->installedAt = CarbonImmutable::today()->subMonths(3);
-        $this->device = $this->installDevice($this->installedAt);
+        $this->mohamed = $this->contract('محمد', $warehouse);
+        $this->emad = $this->contract('عماد', $warehouse);
     }
 
-    private function installDevice(CarbonImmutable $installedAt): SalesContract
+    private function contract(string $name, Warehouse $warehouse): SalesContract
     {
         $device = Product::factory()->create(['kind' => ProductKind::Device, 'price' => 5000]);
 
         return app(SalesContractService::class)->create(SalesContractData::fromArray([
-            'customer_id' => Customer::factory()->create()->id,
-            'warehouse_id' => $this->warehouse->id,
-            'contract_date' => $installedAt->toDateString(),
-            'installation_date' => $installedAt->toDateString(),
-            'maintenance_date' => $installedAt->toDateString(),
+            'customer_id' => Customer::factory()->create(['name' => $name])->id,
+            'warehouse_id' => $warehouse->id,
+            'contract_date' => today()->subYear()->toDateString(),
+            'installation_date' => today()->subYear()->toDateString(),
+            'maintenance_date' => today()->toDateString(),
             'type' => 'cash',
             'stock_source' => 'warehouse',
             'installer_id' => $this->technician->id,
-            'sales_rep_id' => $this->salesRep->id,
             'items' => [['product_id' => $device->id, 'quantity' => 1]],
             'paid' => 5000,
+            'maintenance_plan_id' => MaintenancePlan::current()->id,
         ]), trackStock: false);
     }
 
-    private function operation(array $overrides = [])
+    private function custody(): int
     {
-        return $this->from(route('maintenance.operations.create', ['contract' => $this->device->id]))
-            ->post(route('maintenance.operations.store'), array_merge([
-                'sales_contract_id' => $this->device->id,
-                'type' => 'per_item',
-                'positions' => [1, 2],
-                'prices' => [1 => 150, 2 => 100],
-                'technician_id' => $this->technician->id,
-                'sales_rep_id' => $this->salesRep->id,
-                'stock_source' => 'warehouse',
-                'warehouse_id' => $this->warehouse->id,
-                'serviced_at' => today()->toDateString(),
-            ], $overrides));
+        return app(EmployeeStockService::class)->available($this->technician->id, $this->candle->id);
     }
 
-    private function dueDate(int $position): string
+    private function line(array $overrides = []): array
     {
-        return CandleSchedule::where('sales_contract_id', $this->device->id)->where('position', $position)->value('next_due_at')->toDateString();
+        return array_merge(['product_id' => $this->candle->id, 'price' => 150, 'discount' => 20], $overrides);
     }
 
-    public function test_installing_a_device_creates_its_schedule_from_the_installation_date(): void
+    public function test_the_file_lists_every_candle_that_is_not_done_yet(): void
     {
-        $this->assertSame($this->installedAt->addMonth()->toDateString(), $this->dueDate(1));
-        $this->assertSame($this->installedAt->addMonths(2)->toDateString(), $this->dueDate(2));
+        $response = $this->get(route('maintenance.file'))
+            ->assertOk()
+            ->assertSeeInOrder(['كود العميل', 'اسم العميل', 'النوع', 'تاريخ الصيانة', 'الشمعة', 'تم', 'الفني'])
+            ->assertSee('محمد')
+            ->assertSee('عماد')
+            ->assertSee('الشمعة السابعة');
 
-        $this->get(route('maintenance.file'))->assertOk()->assertSee($this->device->code);
+        $this->assertSame(14, $response->viewData('candles')->total());
     }
 
-    public function test_a_per_item_operation_prices_each_candle_pays_commissions_and_renews_the_schedule(): void
+    public function test_per_item_maintenance_completes_one_candle_from_the_technician_custody(): void
     {
-        $this->operation()->assertRedirect(route('maintenance.file'))->assertSessionHas('success');
+        $second = $this->mohamed->maintenanceItems()->where('product_name', 'الشمعة الثانية')->sole();
 
-        $operation = MaintenanceOperation::with('items')->sole();
-        $this->assertSame('250.00', $operation->total);
-        // العمولة المقترحة: 5 ج.م × شمعتين لكل من الفني والموظفة
-        $this->assertSame('10.00', $operation->technician_commission);
-        $this->assertSame('10.00', $operation->sales_rep_commission);
-        $this->assertSame([150.0, 100.0], $operation->items->pluck('unit_price')->map(fn ($p) => (float) $p)->all());
+        $this->get(route('maintenance.create', $second))->assertOk()->assertSee('محمد')->assertSee('الشمعة الثانية');
 
-        $this->assertSame(29, app(StockService::class)->available($this->sediment->id, $this->warehouse->id));
-        $this->assertSame(today()->addMonth()->toDateString(), $this->dueDate(1));
-        $this->assertSame(today()->addMonths(2)->toDateString(), $this->dueDate(2));
-
-        // الجهاز ينسحب من قائمة المستحقين الحالية
-        $this->get(route('maintenance.file'))->assertOk()->assertDontSee($this->device->code);
-    }
-
-    public function test_the_sales_rep_can_be_excluded_and_candles_can_come_from_the_technician_custody(): void
-    {
-        app(EmployeeStockService::class)->handOver($this->technician->id, $this->sediment->id, $this->warehouse->id, 3, today()->toDateString());
-
-        $this->operation([
-            'positions' => [1],
-            'prices' => [1 => 150],
-            'exclude_sales_rep' => 1,
-            'stock_source' => 'installer',
-        ])->assertSessionHasNoErrors();
-
-        $operation = MaintenanceOperation::sole();
-        $this->assertNull($operation->sales_rep_id);
-        $this->assertSame('0.00', $operation->sales_rep_commission);
-        $this->assertSame(2, app(EmployeeStockService::class)->available($this->technician->id, $this->sediment->id));
-    }
-
-    public function test_it_rejects_candles_the_source_does_not_have(): void
-    {
-        $this->operation(['stock_source' => 'installer'])->assertSessionHasErrors('positions');
-
-        $this->assertDatabaseCount('maintenance_operations', 0);
-    }
-
-    public function test_a_package_is_a_candle_balance_consumed_by_visits_and_closed_when_used_up(): void
-    {
-        $this->post(route('maintenance.packages.store'), [
-            'sales_contract_id' => $this->device->id,
-            'candles' => 2,
-            'gift_candles' => 1,
+        $this->post(route('maintenance.store', $second), [
+            'type' => 'per_item',
             'technician_id' => $this->technician->id,
-            'sales_rep_id' => $this->salesRep->id,
-            'technician_commission' => 70,
-            'sales_rep_commission' => 30,
-            'started_at' => today()->toDateString(),
+            'date' => today()->toDateString(),
+            'done' => 1,
+            'lines' => [$second->id => $this->line()],
+        ])->assertRedirect(route('maintenance.file'))->assertSessionHasNoErrors();
+
+        $second->refresh();
+        $this->assertTrue($second->isDone());
+        $this->assertSame(MaintenanceType::PerItem, $second->service_type);
+        $this->assertSame($this->candle->id, $second->product_id);
+        $this->assertSame(130.0, $second->total());
+        $this->assertSame('5.00', $second->technician_commission);
+        $this->assertSame(9, $this->custody());
+
+        // خرجت من الملف وحدها، وباقي شمعات محمد مستنية
+        $this->assertSame(13, $this->get(route('maintenance.file'))->viewData('candles')->total());
+        $this->assertSame(1, $this->get(route('maintenance.file', ['status' => 'done']))->viewData('candles')->total());
+
+        // لا تتسجل مرتين
+        $this->get(route('maintenance.create', $second))->assertRedirect(route('maintenance.file'));
+    }
+
+    public function test_package_maintenance_completes_all_remaining_candles_and_removes_the_customer(): void
+    {
+        $first = $this->emad->maintenanceItems()->where('product_name', 'الشمعة الأولى')->sole();
+        $ids = $this->emad->maintenanceItems()->pluck('id');
+
+        $this->post(route('maintenance.store', $first), [
+            'type' => 'package',
+            'technician_id' => $this->technician->id,
+            'date' => today()->toDateString(),
+            'done' => 1,
+            // جملة بدون فلوس: المبلغ في عقد الصيانة
+            'lines' => $ids->mapWithKeys(fn ($id) => [$id => $this->line(['price' => 0, 'discount' => 0])])->all(),
+        ])->assertRedirect(route('maintenance.file'))->assertSessionHasNoErrors();
+
+        $this->assertSame(7, $this->emad->maintenanceItems()->done()->where('service_type', 'package')->count());
+        $this->assertSame(3, $this->custody());
+        $this->get(route('maintenance.file'))->assertDontSee('عماد')->assertSee('محمد');
+    }
+
+    public function test_warranty_candles_are_free_and_not_done_only_saves_the_technician_and_date(): void
+    {
+        [$first, $second] = $this->mohamed->maintenanceItems()->take(2)->get()->all();
+
+        $this->post(route('maintenance.store', $first), [
+            'type' => 'per_item', 'technician_id' => $this->technician->id, 'date' => today()->toDateString(), 'done' => 1,
+            'lines' => [$first->id => ['product_id' => $this->candle->id, 'under_warranty' => 1]],
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(0.0, $first->fresh()->total());
+
+        $nextWeek = today()->addWeek()->toDateString();
+        $this->post(route('maintenance.store', $second), [
+            'type' => 'per_item', 'technician_id' => $this->technician->id, 'date' => $nextWeek, 'done' => 0,
         ])->assertSessionHasNoErrors();
 
-        $package = MaintenancePackage::sole();
-        $this->assertSame(3, $package->remainingCandles());
+        $second->refresh();
+        $this->assertFalse($second->isDone());
+        $this->assertSame($nextWeek, $second->replacement_date->toDateString());
+        $this->assertSame($this->technician->id, $second->technician_id);
+        $this->assertSame(9, $this->custody());
+    }
 
-        // أسعار الشمع ممنوعة في زيارة العقد — المبلغ مسجّل في عقد الصيانة
-        $this->operation(['type' => 'package', 'maintenance_package_id' => $package->id])->assertSessionHasErrors('prices');
+    public function test_edit_changes_only_the_technician_and_date(): void
+    {
+        $other = User::factory()->create(['role' => User::INSTALLER_ROLE]);
+        $candle = $this->mohamed->maintenanceItems()->first();
 
-        $visit = fn (array $positions) => $this->operation([
-            'type' => 'package', 'maintenance_package_id' => $package->id, 'positions' => $positions,
-            'prices' => null, 'technician_commission' => null, 'sales_rep_commission' => null,
+        $this->patch(route('maintenance.update', $candle), ['technician_id' => $other->id, 'date' => '2027-01-15'])
+            ->assertSessionHasNoErrors();
+
+        $candle->refresh();
+        $this->assertSame($other->id, $candle->technician_id);
+        $this->assertSame('2027-01-15', $candle->replacement_date->toDateString());
+        $this->assertFalse($candle->isDone());
+    }
+
+    public function test_it_validates_custody_prices_and_discount(): void
+    {
+        $candle = $this->mohamed->maintenanceItems()->first();
+        $payload = fn (array $line) => [
+            'type' => 'per_item', 'technician_id' => $this->technician->id, 'date' => today()->toDateString(), 'done' => 1,
+            'lines' => [$candle->id => $line],
+        ];
+
+        $this->post(route('maintenance.store', $candle), $payload(['price' => 100]))->assertSessionHasErrors("lines.{$candle->id}.product_id");
+        $this->post(route('maintenance.store', $candle), $payload($this->line(['price' => 50, 'discount' => 80])))
+            ->assertSessionHasErrors("lines.{$candle->id}.discount");
+
+        $empty = Product::factory()->create(['kind' => ProductKind::Cartridge]);
+        $this->post(route('maintenance.store', $candle), $payload($this->line(['product_id' => $empty->id])))->assertSessionHasErrors('lines');
+
+        $this->assertFalse($candle->fresh()->isDone());
+        $this->assertSame(10, $this->custody());
+    }
+
+    public function test_payroll_counts_the_candles_each_technician_changed_in_the_month(): void
+    {
+        $candle = $this->mohamed->maintenanceItems()->first();
+        $this->post(route('maintenance.store', $candle), [
+            'type' => 'per_item', 'technician_id' => $this->technician->id, 'date' => today()->toDateString(), 'done' => 1,
+            'lines' => [$candle->id => $this->line()],
         ]);
 
-        $visit([1, 2])->assertSessionHasNoErrors();
-        $this->assertSame(1, $package->fresh()->remainingCandles());
-        $this->assertSame('0.00', MaintenanceOperation::first()->total);
+        $row = app(PayrollService::class)
+            ->monthlyRows(CarbonImmutable::today(), User::query()->whereKey($this->technician->id)->get())
+            ->first();
 
-        $visit([1, 2])->assertSessionHasErrors('positions');
-
-        $visit([1])->assertSessionHasNoErrors();
-        $this->assertSame(MaintenancePackageStatus::Closed, $package->fresh()->status);
-        // الشمعة القطنية (المرحلة 1) صُرفت في زيارتين من المخزن: 30 − 2
-        $this->assertSame(28, app(StockService::class)->available($this->sediment->id, $this->warehouse->id));
+        $this->assertSame(1, $row['values']['maintenance_count']);
+        $this->assertSame(5.0, $row['values']['maintenance_commission']);
     }
 
-    public function test_cancelling_an_operation_returns_the_candles_and_restores_the_previous_schedule(): void
+    public function test_changing_the_installation_date_keeps_the_candles_once_one_is_done(): void
     {
-        $this->operation();
-        $operation = MaintenanceOperation::sole();
-
-        $this->delete(route('maintenance.operations.destroy', $operation))->assertSessionHas('success');
-
-        $this->assertSame(30, app(StockService::class)->available($this->sediment->id, $this->warehouse->id));
-        $this->assertSame($this->installedAt->addMonth()->toDateString(), $this->dueDate(1));
-        $this->assertDatabaseCount('maintenance_operations', 0);
-    }
-
-    public function test_changing_a_stage_interval_recalculates_every_device(): void
-    {
-        $this->put(route('maintenance.stages.update'), ['stages' => [
-            1 => ['product_id' => $this->sediment->id, 'interval_months' => 6],
-        ]])->assertSessionHasNoErrors();
-
-        $this->assertSame($this->installedAt->addMonths(6)->toDateString(), $this->dueDate(1));
-        $this->assertDatabaseMissing('candle_schedules', ['sales_contract_id' => $this->device->id, 'position' => 2]);
-    }
-
-    public function test_payroll_sums_per_item_and_package_commissions_for_the_month(): void
-    {
-        $this->operation();
-        MaintenancePackage::create([
-            'customer_id' => $this->device->customer_id, 'sales_contract_id' => $this->device->id,
-            'technician_id' => $this->technician->id, 'candles' => 7, 'technician_commission' => 70,
-            'status' => MaintenancePackageStatus::Active, 'started_at' => today()->toDateString(),
+        $candle = $this->mohamed->maintenanceItems()->first();
+        $this->post(route('maintenance.store', $candle), [
+            'type' => 'per_item', 'technician_id' => $this->technician->id, 'date' => today()->toDateString(), 'done' => 1,
+            'lines' => [$candle->id => $this->line()],
         ]);
 
-        $row = app(PayrollService::class)->monthlyRows(CarbonImmutable::today(), collect([$this->technician]))->first();
+        $this->mohamed->load('items');
+        app(SalesContractService::class)->update($this->mohamed, SalesContractData::fromArray([
+            'customer_id' => $this->mohamed->customer_id,
+            'warehouse_id' => $this->mohamed->warehouse_id,
+            'contract_date' => today()->subYear()->toDateString(),
+            'installation_date' => today()->subMonths(6)->toDateString(),
+            'maintenance_date' => today()->toDateString(),
+            'type' => 'cash',
+            'stock_source' => 'warehouse',
+            'installer_id' => $this->technician->id,
+            'items' => $this->mohamed->items->map(fn ($item) => ['product_id' => $item->product_id, 'quantity' => $item->quantity])->all(),
+            'paid' => 5000,
+            'maintenance_plan_id' => $this->mohamed->maintenance_plan_id,
+        ]));
 
-        $this->assertSame(2, $row['automatic']['maintenance_count']);
-        $this->assertSame(80.0, $row['automatic']['maintenance_commission']);
-        $this->assertSame(80.0, $row['total'] - (float) $this->technician->base_salary);
-    }
-
-    public function test_maintenance_pages_render(): void
-    {
-        foreach ([
-            route('maintenance.file'),
-            route('maintenance.stages.edit'),
-            route('maintenance.operations.index'),
-            route('maintenance.operations.create', ['contract' => $this->device->id]),
-            route('maintenance.operations.create', ['q' => $this->device->code]),
-            route('maintenance.packages.index'),
-            route('maintenance.packages.create', ['contract' => $this->device->id]),
-        ] as $url) {
-            $this->get($url)->assertOk();
-        }
+        $this->assertTrue($candle->fresh()->isDone());
+        $this->assertSame(7, $this->mohamed->maintenanceItems()->count());
     }
 }

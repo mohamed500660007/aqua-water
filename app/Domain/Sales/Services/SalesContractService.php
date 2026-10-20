@@ -7,13 +7,14 @@ use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Maintenance\Models\MaintenancePlan;
-use App\Domain\Maintenance\Services\CandleScheduleService;
 use App\Domain\Sales\Data\CollectInstallmentData;
 use App\Domain\Sales\Data\SalesContractData;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Sales\Models\SalesContract;
 use App\Domain\Sales\Models\SalesContractInstallment;
 use App\Domain\Sales\Models\SalesContractItem;
+use App\Domain\Sales\Models\SalesContractMaintenanceItem;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,6 @@ class SalesContractService
         private readonly ContractPricing $pricing,
         private readonly StockService $stock,
         private readonly EmployeeStockService $employeeStock,
-        private readonly CandleScheduleService $candleSchedules,
     ) {}
 
     /**
@@ -49,7 +49,6 @@ class SalesContractService
             $this->syncInstallments($contract, isNew: true);
             $this->syncMaintenanceSnapshot($contract, $data->maintenancePlanId, isNew: true);
             $this->applyStock($contract, previousQuantities: [], previousSource: null);
-            $this->candleSchedules->syncContract($contract);
 
             return $contract;
         });
@@ -61,6 +60,7 @@ class SalesContractService
             $previousQuantities = $contract->reservedQuantitiesByProduct();
             $previousSource = $this->sourceContext($contract);
             $previousPlanId = $contract->maintenance_plan_id;
+            $previousStart = $this->maintenanceStart($contract);
             $pricing = $this->pricing->forContract($data);
 
             $contract->update($this->attributes($data, $pricing['subtotal']));
@@ -68,14 +68,14 @@ class SalesContractService
             $this->syncItems($contract, $pricing['lines']);
             $this->syncInstallments($contract);
 
-            // النسخة الثابتة من بنود الصيانة تُعاد فقط عند تغيير الخطة المرتبطة
-            if ($previousPlanId !== $data->maintenancePlanId) {
+            // نسخة شمعات الصيانة تُعاد عند تغيير الخطة أو تصحيح تاريخ التركيب — ما لم تتغير أي شمعة فعلًا
+            $planChanged = $previousPlanId !== $data->maintenancePlanId || $previousStart !== $this->maintenanceStart($contract);
+
+            if ($planChanged && $contract->maintenanceItems()->done()->doesntExist()) {
                 $this->syncMaintenanceSnapshot($contract, $data->maintenancePlanId);
             }
 
             $this->applyStock($contract, $previousQuantities, $previousSource);
-            // تاريخ التركيب قد يتغير فتتغير مواعيد شمعات الجهاز
-            $this->candleSchedules->syncContract($contract);
 
             return $contract;
         });
@@ -284,6 +284,10 @@ class SalesContractService
         $this->insertChildren(SalesContractInstallment::class, $contract, $schedule);
     }
 
+    /**
+     * نسخة ثابتة من شمعات الخطة على العقد: موعد كل شمعة = تاريخ التركيب (أو العقد إن لم يُركَّب) + دوريتها.
+     * الشمعات تنطبق على كل الفلاتر، فلا منتج مرتبط بها.
+     */
     private function syncMaintenanceSnapshot(SalesContract $contract, ?int $planId, bool $isNew = false): void
     {
         $this->clearExisting($contract, 'maintenanceItems', $isNew);
@@ -292,20 +296,23 @@ class SalesContractService
             return;
         }
 
-        $plan = MaintenancePlan::query()->with('items.product:id,name')->find($planId);
+        $start = CarbonImmutable::parse($this->maintenanceStart($contract));
+        $rows = [];
 
-        if (! $plan) {
-            return;
+        foreach (MaintenancePlan::CANDLE_INTERVALS as $position => $months) {
+            $rows[] = [
+                'product_name' => MaintenancePlan::candleLabel($position),
+                'interval_months' => $months,
+                'replacement_date' => $start->addMonthsNoOverflow($months)->toDateString(),
+            ];
         }
 
-        $contract->maintenanceItems()->createMany(
-            $plan->items->map(fn ($item) => [
-                'product_id' => $item->product_id,
-                'product_name' => $item->product?->name ?? 'منتج محذوف',
-                'interval_months' => $item->interval_months,
-                'replacement_date' => $item->replacement_date->toDateString(),
-            ])->all(),
-        );
+        $this->insertChildren(SalesContractMaintenanceItem::class, $contract, $rows);
+    }
+
+    private function maintenanceStart(SalesContract $contract): string
+    {
+        return ($contract->installation_date ?? $contract->contract_date)->toDateString();
     }
 
     /**

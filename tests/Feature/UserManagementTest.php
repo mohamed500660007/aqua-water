@@ -31,12 +31,16 @@ class UserManagementTest extends TestCase
 
     public function test_index_lists_users(): void
     {
-        $user = User::factory()->create(['name' => 'ريهام عبد الفتاح']);
+        $user = User::factory()->create(['name' => 'ريهام عبد الفتاح', 'department' => 'المبيعات', 'hire_date' => '2025-03-01']);
 
         $this->get(route('users.index'))
             ->assertOk()
-            ->assertSee($user->name)
-            ->assertSee($user->email);
+            ->assertSeeInOrder(['كود الموظف', 'اسم الموظف', 'القسم', 'الحالة', 'تاريخ التعيين'])
+            ->assertSeeInOrder([$user->code(), $user->name, 'المبيعات', $user->status->label(), '2025-03-01'])
+            ->assertDontSee($user->email);
+
+        // البحث بكود الموظف
+        $this->get(route('users.index', ['q' => $user->code()]))->assertOk()->assertSee($user->name);
     }
 
     public function test_index_paginates_results(): void

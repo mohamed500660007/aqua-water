@@ -59,11 +59,12 @@
             <table class="w-full min-w-[880px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
-                        <x-ui.sort-th column="name">العميل</x-ui.sort-th>
                         <x-ui.sort-th column="code">الكود</x-ui.sort-th>
-                        <x-ui.th>الهاتف</x-ui.th>
-                        <x-ui.th>الموقع</x-ui.th>
-                        <x-ui.sort-th column="registered_at">تاريخ التسجيل</x-ui.sort-th>
+                        <x-ui.sort-th column="name">العميل</x-ui.sort-th>
+                        <x-ui.th>رقم الموبايل</x-ui.th>
+                        <x-ui.th>المركز</x-ui.th>
+                        <x-ui.th>العنوان</x-ui.th>
+                        <x-ui.th>تاريخ التركيب</x-ui.th>
                         <x-ui.sort-th column="status">الحالة</x-ui.sort-th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
@@ -71,18 +72,14 @@
                 <tbody class="divide-y divide-gray-50">
                     @foreach ($customers as $customer)
                         <tr class="hover:bg-gray-50/70 transition-colors">
+                            <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $customer->code }}</td>
                             <td class="px-4 py-3">
                                 <button class="flex items-center gap-3 min-w-0 text-right" type="button"
-                                    x-on:click="$store.drawer.show(@js(route('customers.panel', $customer)))">
-                                    <x-ui.avatar :name="$customer->name" size="w-10 h-10" />
-                                    <div class="min-w-0">
-                                        <p class="text-[13px] font-bold text-gray-800 truncate">{{ $customer->name }}</p>
-                                        <p class="text-[11px] text-gray-400" dir="ltr">
-                                            {{ $customer->national_id ?? '—' }}</p>
-                                    </div>
+                                    x-on:click="$store.drawer.show({{ Js::from(route('customers.panel', $customer)) }})">
+                                    <x-ui.avatar :name="$customer->name" size="w-9 h-9" />
+                                    <span class="text-[13px] font-bold text-gray-800 truncate">{{ $customer->name }}</span>
                                 </button>
                             </td>
-                            <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $customer->code }}</td>
                             <td class="px-4 py-3">
                                 <p class="text-[12px] font-semibold text-gray-700" dir="ltr">
                                     {{ $customer->primaryPhone?->phone ?? '—' }}</p>
@@ -90,19 +87,15 @@
                                     <p class="text-[11px] text-gray-400">+{{ $customer->phones_count - 1 }} رقم إضافي</p>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-[12px] font-semibold text-gray-700">{{ $customer->center ?? '—' }}</td>
                             <td class="px-4 py-3">
-                                <p class="text-[12px] font-semibold text-gray-700">{{ $customer->governorate ?? '—' }}</p>
-                                <p class="text-[11px] text-gray-400 truncate max-w-[180px]">
-                                    {{ collect([$customer->center, $customer->village])->filter()->join(' — ') ?: '—' }}
-                                </p>
+                                <p class="text-[12px] text-gray-600 max-w-[240px] line-clamp-2">
+                                    {{ $customer->detailed_address ?: ($customer->village ?? '—') }}</p>
                             </td>
                             <td class="px-4 py-3 text-[12px] font-semibold text-gray-700" dir="ltr">
-                                {{ $customer->registered_at?->format('Y-m-d') }}</td>
+                                {{ $customer->installed_at ? \Illuminate\Support\Carbon::parse($customer->installed_at)->format('Y-m-d') : '—' }}</td>
                             <td class="px-4 py-3">
-                                <div class="flex flex-wrap items-center gap-1">
-                                    <x-ui.badge :tone="$customer->status->tone()" dot>{{ $customer->status->label() }}</x-ui.badge>
-                                    <x-ui.badge :tone="$customer->origin->tone()">{{ $customer->origin->label() }}</x-ui.badge>
-                                </div>
+                                <x-ui.badge :tone="$customer->status->tone()" dot>{{ $customer->status->label() }}</x-ui.badge>
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">

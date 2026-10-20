@@ -1,7 +1,7 @@
 {{-- بداية: ترويسة الهاتف — جزيرة داكنة بنفس لغة شريط سطح المكتب --}}
 <header class="lg:hidden sticky top-0 z-30 px-3 pt-3 pb-2 bg-[#FAFAFA]/85 backdrop-blur-md">
     <div class="m-island m-header">
-        <a class="m-logo" href="{{ route('contracts.index') }}" aria-label="أكوا ووتر — الرئيسية" wire:navigate>
+        <a class="m-logo" href="{{ route('home') }}" aria-label="أكوا ووتر — الرئيسية" wire:navigate>
             <x-icon class="w-5 h-5" name="droplets" />
         </a>
 

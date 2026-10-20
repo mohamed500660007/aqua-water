@@ -14,12 +14,12 @@ class PurchaseOrderRequest extends FormRequest
             'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
             'supplier' => ['nullable', 'string', 'max:150'],
             'order_date' => ['required', 'date', 'before_or_equal:today'],
-            'total_amount' => ['required', 'numeric', 'min:0', 'max:999999999.99'],
             'note' => ['nullable', 'string', 'max:500'],
 
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.product_id' => ['required', 'distinct', Rule::exists('products', 'id')->whereNull('deleted_at')],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0', 'max:9999999'],
         ];
     }
 
@@ -49,11 +49,11 @@ class PurchaseOrderRequest extends FormRequest
             'warehouse_id' => 'المخزن',
             'supplier' => 'المورد',
             'order_date' => 'تاريخ الطلبية',
-            'total_amount' => 'إجمالي مبلغ الطلبية',
             'note' => 'الملاحظة',
             'items' => 'بنود الطلبية',
             'items.*.product_id' => 'المنتج',
             'items.*.quantity' => 'الكمية',
+            'items.*.unit_price' => 'سعر الشراء',
         ];
     }
 
@@ -65,6 +65,8 @@ class PurchaseOrderRequest extends FormRequest
             'items.min' => 'يجب إضافة منتج واحد على الأقل للطلبية.',
             'items.*.product_id.distinct' => 'لا يمكن تكرار نفس المنتج داخل الطلبية.',
             'items.*.quantity.min' => 'الكمية يجب ألا تقل عن 1.',
+            'items.*.unit_price.required' => 'اكتب سعر شراء القطعة لكل منتج.',
+            'items.*.unit_price.min' => 'سعر الشراء لا يمكن أن يكون سالبًا.',
         ];
     }
 }

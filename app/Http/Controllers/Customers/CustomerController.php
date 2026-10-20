@@ -26,6 +26,8 @@ class CustomerController extends Controller
         $customers = Customer::query()
             ->with('primaryPhone')
             ->withCount('phones')
+            // تاريخ تركيب أحدث جهاز للعميل — استعلام فرعي واحد بدل تحميل كل عقوده
+            ->withMax('contracts as installed_at', 'installation_date')
             ->search($request->input('q'))
             ->applyFilters($request->only(['status', 'origin', 'governorate', 'center', 'village']))
             ->applySort($request->input('sort'), $request->input('dir'))

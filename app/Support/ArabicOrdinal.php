@@ -21,6 +21,17 @@ final class ArabicOrdinal
         6 => 'الستون', 7 => 'السبعون', 8 => 'الثمانون', 9 => 'التسعون',
     ];
 
+    private const FEMININE_UNITS = [
+        1 => 'الأولى', 2 => 'الثانية', 3 => 'الثالثة', 4 => 'الرابعة', 5 => 'الخامسة',
+        6 => 'السادسة', 7 => 'السابعة', 8 => 'الثامنة', 9 => 'التاسعة', 10 => 'العاشرة',
+    ];
+
+    /** صيغة المؤنث حتى العاشرة (الشمعة الأولى، الثانية...) — ما بعدها يُكتب رقمًا */
+    public static function feminine(int $number): string
+    {
+        return self::FEMININE_UNITS[$number] ?? (string) $number;
+    }
+
     public static function of(int $number): string
     {
         if ($number >= 1 && $number <= 10) {

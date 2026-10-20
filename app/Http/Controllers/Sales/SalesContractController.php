@@ -36,8 +36,11 @@ class SalesContractController extends Controller
     public function index(Request $request): View
     {
         $contracts = SalesContract::query()
-            ->with(['customer:id,name,code'])
-            ->withCount('items')
+            ->with([
+                'customer:id,name,code,center',
+                'installer:id,name',
+                'items:id,sales_contract_id,product_name',
+            ])
             ->search($request->input('q'))
             ->applyFilters($request->only(['kind', 'type', 'customer_id', 'legal', 'from', 'to']))
             ->applySort($request->input('sort'), $request->input('dir'))
@@ -167,19 +170,13 @@ class SalesContractController extends Controller
 
     private function formOptions(): array
     {
-        $plans = MaintenancePlan::query()
-            ->with(['items:id,maintenance_plan_id,product_id,interval_months,replacement_date', 'items.product:id,name'])
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
         return $this->peopleOptions() + [
             'warehouses' => Warehouse::options(),
             'types' => ContractType::options(),
             'kinds' => ContractKind::options(),
             'stockSources' => StockSource::options(),
             'products' => Product::query()->orderBy('name')->get(['id', 'sku', 'name', 'price']),
-            'plans' => $plans,
+            'plan' => MaintenancePlan::current(),
             'availability' => $this->stock->availabilityMatrix(),
             'employeeAvailability' => $this->employeeStock->availabilityMatrix(),
         ];

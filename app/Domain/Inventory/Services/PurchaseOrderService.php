@@ -23,12 +23,12 @@ class PurchaseOrderService
                 'warehouse_id' => $data->warehouseId,
                 'supplier' => $data->supplier,
                 'order_date' => $data->orderDate,
-                'total_amount' => $data->totalAmount,
+                'total_amount' => $data->totalAmount(),
                 'note' => $data->note,
             ]);
 
             $order->items()->createMany(array_map(
-                fn ($item) => ['product_id' => $item->productId, 'quantity' => $item->quantity],
+                fn ($item) => ['product_id' => $item->productId, 'quantity' => $item->quantity, 'unit_price' => $item->unitPrice],
                 $data->items,
             ));
 

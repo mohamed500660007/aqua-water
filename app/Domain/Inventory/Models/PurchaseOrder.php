@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * طلبية بضاعة واردة للمخزن — تُسجَّل بإجمالي مبلغها المدفوع للمورد، لا بسعر كل قطعة.
+ * طلبية بضاعة واردة للمخزن — كل بند بسعر شراء القطعة، وإجمالي الطلبية مجموع بنودها.
  */
 class PurchaseOrder extends Model
 {
@@ -47,7 +47,7 @@ class PurchaseOrder extends Model
             return;
         }
 
-        $id = (int) ltrim(preg_replace('/^PO-?/i', '', $term), '0');
+        $id = self::idFromNumber($term);
 
         $query->where(function (Builder $query) use ($term, $id) {
             $query->where('supplier', 'like', "%{$term}%")
@@ -60,6 +60,12 @@ class PurchaseOrder extends Model
                 $query->orWhere('id', $id);
             }
         });
+    }
+
+    /** معرّف الطلبية من رقمها المعروض (PO-0007 أو 7) — صفر إن لم يكن رقمًا */
+    public static function idFromNumber(string $term): int
+    {
+        return (int) ltrim(preg_replace('/^PO-?/i', '', trim($term)), '0');
     }
 
     /** @param  array<string, string|null>  $filters */

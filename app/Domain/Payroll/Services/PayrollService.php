@@ -2,12 +2,12 @@
 
 namespace App\Domain\Payroll\Services;
 
-use App\Domain\Maintenance\Services\MaintenanceCommissions;
 use App\Domain\Payroll\Models\Payroll;
 use App\Domain\Payroll\Models\PayrollPayment;
 use App\Domain\Sales\Enums\ContractKind;
 use App\Domain\Sales\Models\SalesContract;
 use App\Domain\Sales\Models\SalesContractInstallment;
+use App\Domain\Sales\Models\SalesContractMaintenanceItem;
 use App\Domain\Users\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
@@ -15,8 +15,6 @@ use RuntimeException;
 
 class PayrollService
 {
-    public function __construct(private readonly MaintenanceCommissions $maintenance) {}
-
     private const MONEY_KEYS = [
         'base_salary', 'installment_total', 'installment_commission', 'device_sales_total',
         'installation_commission', 'marketing_commission', 'maintenance_commission',
@@ -70,7 +68,12 @@ class PayrollService
             ->selectRaw('sales_rep_id as user_id, SUM(total) as amount_total')
             ->groupBy('sales_rep_id')->get()->keyBy('user_id');
 
-        $maintenance = $this->maintenance->forPeriod($userIds->all(), $from, $to);
+        // عمولة الصيانة: كل شمعة غيّرها الفني في الشهر بعمولتها المحفوظة وقت الصيانة
+        $maintenance = SalesContractMaintenanceItem::query()
+            ->whereIn('technician_id', $userIds)
+            ->whereBetween('serviced_at', [$from, $to])
+            ->selectRaw('technician_id as user_id, COUNT(*) as item_count, SUM(technician_commission) as amount_total')
+            ->groupBy('technician_id')->get()->keyBy('user_id');
 
         $saved = Payroll::query()
             ->with('payments')
@@ -92,9 +95,8 @@ class PayrollService
                 'marketed_device_count' => (int) ($soldDevices->get($user->id)?->item_count ?? 0),
                 'device_sales_total' => (float) ($salesValue->get($user->id)?->amount_total ?? 0),
                 'marketing_commission' => (float) $user->marketing_commission,
-                // عمولات الصيانة مبالغ محسوبة على كل عملية/عقد صيانة، لا عدد × سعر ثابت
-                'maintenance_count' => $maintenance[$user->id]['count'] ?? 0,
-                'maintenance_commission' => $maintenance[$user->id]['amount'] ?? 0.0,
+                'maintenance_count' => (int) ($maintenance->get($user->id)?->item_count ?? 0),
+                'maintenance_commission' => round((float) ($maintenance->get($user->id)?->amount_total ?? 0), 2),
                 'absence_days' => 0,
                 'regular_deduction' => 0.0,
                 'deduction_reason' => null,

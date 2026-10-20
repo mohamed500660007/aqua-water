@@ -30,6 +30,6 @@
 
 @section('sheets')
     <div class="page w-full flex flex-col items-center">
-        @include('partials.installments.receipt-sheet', ['installment' => $installment, 'receiptNote' => $receiptNote])
+        @include('partials.installments.receipt-sheet', ['installment' => $installment])
     </div>
 @endsection

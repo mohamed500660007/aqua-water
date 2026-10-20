@@ -1,7 +1,6 @@
 {{-- إيصال تحصيل واحد (1024×460px تصميمًا، يُصغَّر عند الطباعة ليصفّ ثلاثة في ورقة A4):
      الإيصال الذي يُسلَّم للعميل + كعب جانبي يُقص ويبقى مع الإدارة. للأقساط غير المحصَّلة
-     (دفتر الإيصالات) تُترك خانات التحصيل فارغة لتُكتب باليد.
-     $receiptNote: الملاحظة الثابتة لكل الإيصالات (تُمرَّر من الصفحة مرة واحدة لا تُقرأ لكل إيصال). --}}
+     (دفتر الإيصالات) تُترك خانات التحصيل فارغة لتُكتب باليد. --}}
 @php
     $contract = $installment->contract;
     $customer = $contract->customer;
@@ -14,6 +13,7 @@
     $collectedAt = $installment->paid_at;
     $collector = $installment->collectedBy?->name;
     $installmentNo = \App\Support\ArabicOrdinal::of($installment->number);
+    $collectionDay = $installment->due_date->day;
     $companyPhone = config('app.company_phone');
     $blank = '';
 @endphp
@@ -71,16 +71,15 @@
             </tr>
             <tr>
                 <th>رقم القسط</th>
-                <td>{{ $installmentNo }}{{ $contract->installments_count ? ' من ' . $contract->installments_count : '' }}</td>
+                <td>{{ $installmentNo }}</td>
                 <th>تاريخ الاستحقاق</th>
                 <td class="num" dir="ltr" style="text-align: right">{{ $dueDate }}</td>
                 <th>اسم المحصّل</th>
                 <td>{{ $collector ?? $blank }}</td>
             </tr>
-            {{-- الملاحظة الثابتة لكل الإيصالات؛ إن لم تُضبط تبقى الخانة فارغة لتُكتب باليد --}}
             <tr>
-                <th>ملاحظات</th>
-                <td class="rc-note" colspan="5">{{ $receiptNote ?? '' }}</td>
+                <th>يوم التحصيل</th>
+                <td colspan="5">يوم <span class="num">{{ $collectionDay }}</span> شهريًا</td>
             </tr>
         </table>
 
@@ -101,6 +100,9 @@
             <span>هذا الإيصال لا يُعتد به إلا بعد التوقيع والختم — يُرجى الاحتفاظ به لحين انتهاء الأقساط.</span>
             <span>نسخة العميل</span>
         </p>
+
+        {{-- شرط ثابت على كل الإيصالات بلا استثناء — لا يُعدَّل من النظام --}}
+        <p class="rc-terms">في حالة تأخير القسط للشهر التالي تُضاف 50 جنيه — في حالة التأخير ليوم آخر إضافة 10 جنيه</p>
     </div>
 
     {{-- ===== خط القص ===== --}}

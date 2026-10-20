@@ -6,7 +6,6 @@
 
 @php
     $hasFilters = collect(request()->only(['q', 'warehouse_id', 'from', 'to']))->filter()->isNotEmpty();
-    $visibleItems = 3;
 @endphp
 
 @section('content')
@@ -65,65 +64,53 @@
             @endif
         </div>
 
+        {{-- صف لكل منتج في كل طلبية؛ المعاينة والحذف يخصّان الطلبية كلها --}}
         <div class="overflow-x-auto scrollbar-hide" x-data>
             <table class="w-full min-w-[920px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
-                        <x-ui.th>رقم الطلبية</x-ui.th>
-                        <x-ui.th>التاريخ</x-ui.th>
+                        <x-ui.th>كود المنتج</x-ui.th>
+                        <x-ui.th>المنتج</x-ui.th>
                         <x-ui.th>المخزن</x-ui.th>
-                        <x-ui.th>المورد</x-ui.th>
-                        <x-ui.th>الأصناف</x-ui.th>
-                        <x-ui.th>القطع</x-ui.th>
-                        <x-ui.th>المبلغ</x-ui.th>
+                        <x-ui.th>تاريخ الطلبية</x-ui.th>
+                        <x-ui.th>الكمية</x-ui.th>
+                        <x-ui.th>سعر الشراء</x-ui.th>
+                        <x-ui.th>الرصيد الحالي</x-ui.th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
-                    @foreach ($orders as $order)
-                        @php($panel = Js::from(route('inventory.purchase-orders.panel', $order)))
+                    @foreach ($items as $item)
+                        @php
+                            $order = $item->purchaseOrder;
+                            $panel = Js::from(route('inventory.purchase-orders.panel', $order));
+                        @endphp
                         <tr class="hover:bg-gray-50/70 transition-colors">
-                            <td class="px-4 py-3">
-                                <button class="text-[12.5px] font-black text-gray-800 hover:underline font-mono" dir="ltr" type="button"
-                                    x-on:click="$store.drawer.show({{ $panel }})">{{ $order->number() }}</button>
-                            </td>
+                            <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $item->product?->sku ?? '—' }}</td>
+                            <td class="px-4 py-3 text-[13px] font-bold text-gray-800">{{ $item->product?->name ?? 'منتج محذوف' }}</td>
+                            <td class="px-4 py-3 text-[12.5px] font-semibold text-gray-700">{{ $order->warehouse?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-[12px] font-semibold text-gray-600 whitespace-nowrap" dir="ltr">{{ $order->order_date->format('Y-m-d') }}</td>
-                            <td class="px-4 py-3 text-[13px] font-bold text-gray-800">{{ $order->warehouse?->name ?? '—' }}</td>
-                            <td class="px-4 py-3">
-                                <p class="text-[12.5px] font-semibold text-gray-700">{{ $order->supplier ?? '—' }}</p>
-                                @if ($order->note)
-                                    <p class="text-[11px] text-gray-400 truncate max-w-[180px]" title="{{ $order->note }}">{{ $order->note }}</p>
+                            <td class="px-4 py-3 text-[13px] font-bold text-gray-800">{{ number_format($item->quantity) }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap">
+                                @if ($item->unit_price !== null)
+                                    <span class="text-[13px] font-bold text-gray-800">{{ number_format((float) $item->unit_price, 2) }}</span>
+                                    <span class="text-[10px] text-gray-400">ج.م</span>
+                                @else
+                                    <span class="text-[12px] text-gray-400" title="طلبية قديمة سُجّلت بإجمالي مبلغ فقط">—</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3">
-                                <div class="flex flex-wrap gap-1 max-w-[300px]">
-                                    @foreach ($order->items->take($visibleItems) as $item)
-                                        <span class="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">
-                                            {{ $item->product?->name ?? 'منتج محذوف' }}
-                                            <b class="text-gray-800">× {{ number_format($item->quantity) }}</b>
-                                        </span>
-                                    @endforeach
-                                    @if ($order->items->count() > $visibleItems)
-                                        <button class="rounded-lg border border-gray-200 px-2 py-0.5 text-[11px] font-bold text-gray-500 hover:bg-gray-50" type="button"
-                                            x-on:click="$store.drawer.show({{ $panel }})">+{{ $order->items->count() - $visibleItems }} أصناف</button>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="px-4 py-3 text-[13px] font-bold text-gray-800">{{ number_format((int) $order->pieces) }}</td>
-                            <td class="px-4 py-3 whitespace-nowrap">
-                                <span class="text-[13px] font-black text-gray-800">{{ number_format((float) $order->total_amount, 2) }}</span>
-                                <span class="text-[10px] text-gray-400">ج.م</span>
-                            </td>
+                            <td class="px-4 py-3 text-[13px] font-black {{ (int) $item->current_balance > 0 ? 'text-green-700' : 'text-red-500' }}">
+                                {{ number_format((int) $item->current_balance) }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
-                                    <x-ui.icon-btn icon="eye" label="معاينة" tone="primary" x-on:click="$store.drawer.show({{ $panel }})" />
+                                    <x-ui.icon-btn icon="eye" label="معاينة الطلبية" tone="primary" x-on:click="$store.drawer.show({{ $panel }})" />
                                     <form action="{{ route('inventory.purchase-orders.destroy', $order) }}" method="POST" x-data>
                                         @csrf
                                         @method('DELETE')
-                                        <x-ui.icon-btn icon="trash-2" label="حذف" tone="danger"
+                                        <x-ui.icon-btn icon="trash-2" label="حذف الطلبية" tone="danger"
                                             x-on:click="$store.confirm.ask({
-                                                title: 'حذف الطلبية',
-                                                message: {{ Js::from('ستُخصم كميات الطلبية ' . $order->number() . ' من ' . ($order->warehouse?->name ?? 'المخزن') . '.') }},
+                                                title: 'حذف الطلبية كلها',
+                                                message: {{ Js::from('ستُحذف الطلبية ' . $order->number() . ' بكل منتجاتها وتُخصم كمياتها من ' . ($order->warehouse?->name ?? 'المخزن') . '.') }},
                                                 label: 'حذف',
                                                 onOk: () => $root.requestSubmit()
                                             })" />
@@ -136,7 +123,7 @@
             </table>
         </div>
 
-        @if ($orders->isEmpty())
+        @if ($items->isEmpty())
             <x-ui.empty-state icon="truck" :title="$hasFilters ? 'لا توجد طلبيات مطابقة' : 'لا توجد طلبيات بعد'"
                 :message="$hasFilters ? 'جرّب تعديل البحث أو الفترة أو إعادة ضبط الفلاتر.' : 'سجّل أول طلبية وارد لتظهر في تقارير المخزن والتقرير المالي.'">
                 <x-slot:action>
@@ -147,6 +134,6 @@
             </x-ui.empty-state>
         @endif
 
-        <x-ui.paginator :paginator="$orders" />
+        <x-ui.paginator :paginator="$items" />
     </div>
 @endsection

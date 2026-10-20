@@ -46,28 +46,22 @@
             <table class="w-full min-w-[640px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
-                        <x-ui.sort-th column="name">المنتج</x-ui.sort-th>
+                        <x-ui.sort-th column="sku">الكود</x-ui.sort-th>
+                        <x-ui.sort-th column="name">الاسم</x-ui.sort-th>
                         <x-ui.th>النوع</x-ui.th>
-                        <x-ui.sort-th column="price">سعر البيع</x-ui.sort-th>
-                        <x-ui.th>الرصيد</x-ui.th>
+                        <x-ui.th>الإجمالي</x-ui.th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     @foreach ($products as $product)
                         <tr class="hover:bg-gray-50/70 transition-colors">
+                            <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $product->sku }}</td>
                             <td class="px-4 py-3">
-                                <a class="min-w-0 block" href="{{ route('products.show', $product) }}" wire:navigate>
-                                    <p class="text-[13px] font-bold text-gray-800 truncate">{{ $product->name }}</p>
-                                    <p class="text-[11px] text-gray-400" dir="ltr">{{ $product->sku }}</p>
-                                </a>
+                                <a class="text-[13px] font-bold text-gray-800 hover:underline" href="{{ route('products.show', $product) }}" wire:navigate>
+                                    {{ $product->name }}</a>
                             </td>
                             <td class="px-4 py-3 text-[12px] text-gray-600">{{ $product->kind->label() }}</td>
-                            <td class="px-4 py-3">
-                                <span class="text-[13px] font-bold text-gray-800">
-                                    {{ number_format((float) $product->price) }}</span>
-                                <span class="text-[10px] text-gray-400">ج.م</span>
-                            </td>
                             <td class="px-4 py-3 text-[13px] font-bold text-gray-700">
                                 {{ number_format((int) $product->quantity) }}</td>
                             <td class="px-4 py-3">

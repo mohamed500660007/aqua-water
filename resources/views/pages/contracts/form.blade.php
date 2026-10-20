@@ -14,13 +14,13 @@
         'price' => (float) $product->price,
     ]);
 
-    $planItems = $plans->mapWithKeys(fn($plan) => [
-        (string) $plan->id => $plan->items->map(fn($item) => [
-            'product' => $item->product?->name ?? 'منتج محذوف',
-            'interval_months' => $item->interval_months,
-            'replacement_date' => $item->replacement_date->format('Y-m-d'),
-        ]),
-    ]);
+    // شمعات الخطة الثابتة للمعاينة؛ المواعيد الفعلية تُحسب من تاريخ التركيب عند الحفظ
+    $planCandles = collect(\App\Domain\Maintenance\Models\MaintenancePlan::CANDLE_INTERVALS)
+        ->map(fn($months, $position) => [
+            'label' => \App\Domain\Maintenance\Models\MaintenancePlan::candleLabel($position),
+            'interval' => \App\Domain\Maintenance\Models\MaintenancePlan::intervalLabel($months),
+        ])
+        ->values();
 
     // الكميات المحجوزة لهذا العقد تُضاف إلى المتاح أثناء التعديل
     $reserved = $contract
@@ -37,7 +37,10 @@
         'paid' => (float) old('paid', $contract?->paid ?? 0),
         'installmentsCount' => (int) old('installments_count', $contract?->installments_count ?? 6),
         'periodMonths' => (int) old('installment_period_months', $contract?->installment_period_months ?? 1),
-        'planId' => (string) old('maintenance_plan_id', $contract?->maintenance_plan_id ?? ''),
+        // العقد الجديد يدخل الخطة افتراضيًا؛ بعد خطأ تحقق تُحترم آخر قيمة اختارها المستخدم
+        'withPlan' => session()->hasOldInput()
+            ? filled(old('maintenance_plan_id'))
+            : (bool) ($contract ? $contract->maintenance_plan_id : $plan?->id),
         'kind' => old('kind', $contract?->kind?->value ?? ($defaultKind ?? 'sale')),
         'price' => (float) old('price', $contract?->isMaintenance() ? $contract->subtotal : 0),
     ];
@@ -54,7 +57,7 @@
         warehouseNames: @js($warehouses),
         employeeNames: @js($salesReps + $installers),
         reserved: @js($reserved),
-        plans: @js($planItems),
+        planCandles: @js($planCandles),
         stockSources: @js($stockSourceOptions),
         defaults: @js($defaults),
     })"
@@ -122,9 +125,14 @@
                     <x-ui.field label="تاريخ التحصيل" name="collection_date" type="date"
                         :value="old('collection_date', $contract?->collection_date?->format('Y-m-d'))" />
 
-                    <x-ui.field label="خطة الصيانة" name="maintenance_plan_id" type="select"
-                        :options="$plans->pluck('name', 'id')->all()" :value="$defaults['planId']" placeholder="بدون خطة صيانة"
-                        x-model="planId" />
+                    @if ($plan)
+                        <label class="flex items-center gap-3 self-end h-11 px-3.5 rounded-xl border border-gray-200 cursor-pointer select-none">
+                            <input class="w-4 h-4 rounded" style="accent-color: #84CC16" name="maintenance_plan_id" type="checkbox"
+                                value="{{ $plan->id }}" x-model="withPlan" />
+                            <span class="text-[13px] font-bold text-gray-700">ضمن خطة الصيانة</span>
+                            <span class="text-[11px] text-gray-400">(7 شمعات)</span>
+                        </label>
+                    @endif
 
                     <x-ui.field col="sm:col-span-2" label="ملاحظات" name="notes" type="textarea" rows="2"
                         placeholder="أي تفاصيل إضافية عن العقد..." :value="$contract?->notes" />
@@ -310,27 +318,22 @@
 
             {{-- بنود خطة الصيانة المختارة --}}
             <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5" x-cloak
-                x-show="planItems.length">
+                x-show="withPlan && planCandles.length">
                 <div class="flex items-center gap-2.5 mb-4">
                     <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
                         <x-icon class="w-[18px] h-[18px]" name="shield-check" />
                     </span>
                     <div>
-                        <h2 class="text-sm font-bold text-gray-800">بنود خطة الصيانة</h2>
-                        <p class="text-[11px] text-gray-400">تُحفظ نسخة ثابتة منها مع العقد ولا تتأثر بتعديل الخطة لاحقًا</p>
+                        <h2 class="text-sm font-bold text-gray-800">شمعات خطة الصيانة</h2>
+                        <p class="text-[11px] text-gray-400">المواعيد تُحسب من تاريخ التركيب، وتُحفظ نسخة ثابتة منها مع العقد</p>
                     </div>
                 </div>
 
                 <div class="space-y-2">
-                    <template x-bind:key="index" x-for="(item, index) in planItems">
+                    <template x-bind:key="index" x-for="(item, index) in planCandles">
                         <div class="flex items-center justify-between gap-3 p-3 rounded-2xl border border-gray-100">
-                            <span class="text-[13px] font-bold text-gray-800" x-text="item.product"></span>
-                            <div class="flex items-center gap-4 shrink-0">
-                                <span class="text-[11px] text-gray-400" x-show="item.interval_months">
-                                    كل <span class="font-bold text-gray-600" x-text="item.interval_months"></span> شهر
-                                </span>
-                                <span class="text-[11px] text-gray-400" dir="ltr" x-text="item.replacement_date"></span>
-                            </div>
+                            <span class="text-[13px] font-bold text-gray-800" x-text="item.label"></span>
+                            <span class="shrink-0 text-[11.5px] font-bold text-gray-600" x-text="item.interval"></span>
                         </div>
                     </template>
                 </div>
@@ -467,7 +470,7 @@
                 warehouseNames: config.warehouseNames || {},
                 employeeNames: config.employeeNames || {},
                 reserved: config.reserved || {},
-                plans: config.plans || {},
+                planCandles: config.planCandles || [],
                 stockSources: config.stockSources || [],
 
                 items: config.items.length ? config.items.map(toRow) : [blankRow()],
@@ -482,7 +485,7 @@
                 installmentsCount: config.defaults.installmentsCount,
                 periodMonths: config.defaults.periodMonths,
                 firstDueDate: @js(old('first_due_date', $contract?->first_due_date?->format('Y-m-d') ?? today()->addMonth()->toDateString())),
-                planId: config.defaults.planId,
+                withPlan: config.defaults.withPlan,
                 kind: config.defaults.kind,
                 price: config.defaults.price,
 
@@ -563,10 +566,6 @@
                     date.setMonth(date.getMonth() + (count - 1) * (Number(this.periodMonths) || 1));
 
                     return date.toISOString().slice(0, 10);
-                },
-
-                get planItems() {
-                    return this.plans[this.planId] || [];
                 },
 
                 addItem() {

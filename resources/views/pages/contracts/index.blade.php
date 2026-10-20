@@ -53,13 +53,13 @@
             <table class="w-full min-w-[900px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
-                        <x-ui.sort-th column="code">كود العقد</x-ui.sort-th>
+                        <x-ui.sort-th column="code">الكود</x-ui.sort-th>
                         <x-ui.th>العميل</x-ui.th>
                         <x-ui.sort-th column="contract_date">تاريخ العقد</x-ui.sort-th>
-                        <x-ui.th>النوع</x-ui.th>
-                        <x-ui.th>البنود</x-ui.th>
-                        <x-ui.sort-th column="total">الإجمالي</x-ui.sort-th>
-                        <x-ui.th>المتبقي</x-ui.th>
+                        <x-ui.th>المركز</x-ui.th>
+                        <x-ui.th>نوع الجهاز</x-ui.th>
+                        <x-ui.th>القسط</x-ui.th>
+                        <x-ui.th>الفني</x-ui.th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
@@ -69,35 +69,28 @@
                             <td class="px-4 py-3">
                                 <button class="text-[12px] font-bold text-gray-800 hover:underline" dir="ltr" type="button"
                                     x-on:click="$store.drawer.show({{ Js::from(route('contracts.panel', $contract)) }})">{{ $contract->code }}</button>
+                                @if ($contract->isReferredToLegal())
+                                    <div class="mt-1"><x-ui.badge tone="red" dot>قانونية</x-ui.badge></div>
+                                @endif
                             </td>
-                            <td class="px-4 py-3">
-                                <p class="text-[13px] font-bold text-gray-800 truncate">
-                                    {{ $contract->customer?->name ?? '—' }}</p>
-                                <p class="text-[11px] text-gray-400" dir="ltr">{{ $contract->customer?->code }}</p>
-                            </td>
+                            <td class="px-4 py-3 text-[13px] font-bold text-gray-800">{{ $contract->customer?->name ?? '—' }}</td>
                             <td class="px-4 py-3 text-[12px] text-gray-600" dir="ltr">
                                 {{ $contract->contract_date->format('Y-m-d') }}</td>
+                            <td class="px-4 py-3 text-[12px] font-semibold text-gray-700">{{ $contract->customer?->center ?? '—' }}</td>
                             <td class="px-4 py-3">
-                                <div class="flex flex-wrap items-center gap-1">
-                                    <x-ui.badge :tone="$contract->kind->tone()">{{ $contract->kind->label() }}</x-ui.badge>
+                                <p class="text-[12px] font-semibold text-gray-700 max-w-[220px] line-clamp-2">
+                                    {{ $contract->items->pluck('product_name')->unique()->join('، ') ?: '—' }}</p>
+                            </td>
+                            <td class="px-4 py-3">
+                                @if ($contract->isInstallment() && $contract->installment_amount)
+                                    <span class="text-[13px] font-bold text-gray-800">
+                                        {{ number_format((float) $contract->installment_amount, 2) }}</span>
+                                    <span class="text-[10px] text-gray-400">ج.م</span>
+                                @else
                                     <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
-                                    @if ($contract->isReferredToLegal())
-                                        <x-ui.badge tone="red" dot>قانونية</x-ui.badge>
-                                    @endif
-                                </div>
+                                @endif
                             </td>
-                            <td class="px-4 py-3 text-[13px] font-bold text-gray-700">{{ $contract->items_count }}</td>
-                            <td class="px-4 py-3">
-                                <span class="text-[13px] font-bold text-gray-800">
-                                    {{ number_format((float) $contract->total) }}</span>
-                                <span class="text-[10px] text-gray-400">ج.م</span>
-                            </td>
-                            <td class="px-4 py-3">
-                                <span
-                                    class="text-[13px] font-bold {{ (float) $contract->remaining > 0 ? 'text-amber-600' : 'text-green-700' }}">
-                                    {{ number_format((float) $contract->remaining) }}</span>
-                                <span class="text-[10px] text-gray-400">ج.م</span>
-                            </td>
+                            <td class="px-4 py-3 text-[12px] font-semibold text-gray-700">{{ $contract->installer?->name ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <x-ui.icon-btn icon="eye" label="عرض" tone="primary"

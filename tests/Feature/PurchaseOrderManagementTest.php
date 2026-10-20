@@ -36,10 +36,9 @@ class PurchaseOrderManagementTest extends TestCase
             'warehouse_id' => $this->warehouse->id,
             'order_date' => today()->toDateString(),
             'supplier' => 'مؤسسة النيل للفلاتر',
-            'total_amount' => 10000,
             'items' => [
-                ['product_id' => $this->filter->id, 'quantity' => 3],
-                ['product_id' => $this->cartridge->id, 'quantity' => 20],
+                ['product_id' => $this->filter->id, 'quantity' => 3, 'unit_price' => 3000],
+                ['product_id' => $this->cartridge->id, 'quantity' => 20, 'unit_price' => 50],
             ],
         ])->assertSessionHasNoErrors();
     }
@@ -47,13 +46,13 @@ class PurchaseOrderManagementTest extends TestCase
     public function test_page_is_titled_the_warehouse_and_summarises_the_filtered_orders(): void
     {
         $this->order();
-        $this->order(['supplier' => 'أكوا تك', 'total_amount' => 500, 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5]]]);
+        $this->order(['supplier' => 'أكوا تك', 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5, 'unit_price' => 100]]]);
 
         $response = $this->get(route('inventory.purchase-orders.index'))
             ->assertOk()
             ->assertSee('المخزن')
             ->assertDontSee('طلبيات الوارد</h1>', false)
-            ->assertSee('PO-0001');
+            ->assertSeeInOrder(['كود المنتج', 'المنتج', 'المخزن', 'تاريخ الطلبية', 'الكمية', 'سعر الشراء', 'الرصيد الحالي']);
 
         $this->assertSame(['orders' => 2, 'amount' => 10500.0, 'pieces' => 28], $response->viewData('summary'));
     }
@@ -61,12 +60,41 @@ class PurchaseOrderManagementTest extends TestCase
     public function test_it_searches_by_order_number_supplier_and_product(): void
     {
         $this->order();
-        $this->order(['supplier' => 'أكوا تك', 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5]]]);
+        $this->order(['supplier' => 'أكوا تك', 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5, 'unit_price' => 100]]]);
 
-        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'PO-0002']))->viewData('orders')->items());
-        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'النيل']))->viewData('orders')->items());
-        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'فلتر سبع']))->viewData('orders')->items());
+        // كل صف منتج داخل طلبية: البحث بالمنتج يعرض بنده وحده، والبحث بالطلبية أو المورد يعرض كل بنودها
+        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'PO-0002']))->viewData('items')->items());
+        $this->assertCount(2, $this->get(route('inventory.purchase-orders.index', ['q' => 'النيل']))->viewData('items')->items());
+        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'فلتر سبع']))->viewData('items')->items());
         $this->assertSame(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'أكوا تك']))->viewData('summary')['orders']);
+    }
+
+    public function test_each_product_line_shows_its_purchase_price_and_the_current_warehouse_balance(): void
+    {
+        $this->order();
+        $this->order(['supplier' => 'أكوا تك', 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5, 'unit_price' => 100]]]);
+
+        // إجمالي الطلبية يُحسب من بنودها: 3×3000 + 20×50
+        $this->assertSame('10000.00', PurchaseOrder::query()->orderBy('id')->first()->total_amount);
+
+        $items = $this->get(route('inventory.purchase-orders.index'))->assertOk()->viewData('items');
+        $cartridgeLines = collect($items->items())->where('product_id', $this->cartridge->id);
+
+        $this->assertCount(2, $cartridgeLines);
+        $this->assertSame(['100.00', '50.00'], $cartridgeLines->pluck('unit_price')->values()->all());
+        // الرصيد الحالي للمنتج في المخزن كله (20 + 5)، لا كمية الطلبية وحدها
+        $this->assertSame([25, 25], $cartridgeLines->map(fn ($item) => (int) $item->current_balance)->values()->all());
+    }
+
+    public function test_every_line_needs_a_purchase_price(): void
+    {
+        $this->post(route('inventory.purchase-orders.store'), [
+            'warehouse_id' => $this->warehouse->id,
+            'order_date' => today()->toDateString(),
+            'items' => [['product_id' => $this->filter->id, 'quantity' => 3]],
+        ])->assertSessionHasErrors('items.0.unit_price');
+
+        $this->assertSame(0, PurchaseOrder::count());
     }
 
     public function test_preview_panel_shows_the_order_contents(): void
@@ -126,7 +154,7 @@ class PurchaseOrderManagementTest extends TestCase
     {
         $branch = Warehouse::factory()->create(['name' => 'مخزن الفرع', 'is_active' => true]);
         $this->order();
-        $this->order(['warehouse_id' => $branch->id, 'supplier' => 'أكوا تك', 'total_amount' => 500, 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5]]]);
+        $this->order(['warehouse_id' => $branch->id, 'supplier' => 'أكوا تك', 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5, 'unit_price' => 100]]]);
 
         $page = $this->get(route('inventory.purchase-orders.report'))->assertOk()->assertSee('size: A4 portrait', false);
         foreach (['name="q"', 'name="warehouse_id"', 'name="supplier"', 'name="product_id"', 'name="content"', 'name="sort"', 'name="dir"'] as $field) {

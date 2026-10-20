@@ -24,7 +24,7 @@
             <input name="sort" type="hidden" value="{{ request('sort') }}" />
             <input name="dir" type="hidden" value="{{ request('dir') }}" />
 
-            <x-ui.search-input name="q" placeholder="ابحث بالاسم أو البريد أو رقم الهاتف..." value="{{ request('q') }}"
+            <x-ui.search-input name="q" placeholder="ابحث بالكود أو الاسم أو البريد أو رقم الهاتف..." value="{{ request('q') }}"
                 x-model="q" x-on:input.debounce.450ms="navigateForm($el.form)" />
 
             <x-ui.select icon="layers" name="department" :options="$departments" placeholder="كل الأقسام"
@@ -47,33 +47,28 @@
             <table class="w-full min-w-[720px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
-                        <x-ui.sort-th column="name">المستخدم</x-ui.sort-th>
+                        <x-ui.sort-th column="id">كود الموظف</x-ui.sort-th>
+                        <x-ui.sort-th column="name">اسم الموظف</x-ui.sort-th>
                         <x-ui.th>القسم</x-ui.th>
-                        <x-ui.th>الهاتف</x-ui.th>
                         <x-ui.sort-th column="status">الحالة</x-ui.sort-th>
-                        <x-ui.sort-th column="created_at">تاريخ الإضافة</x-ui.sort-th>
+                        <x-ui.sort-th column="hire_date">تاريخ التعيين</x-ui.sort-th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
                     @foreach ($users as $user)
                         <tr class="hover:bg-gray-50/70 transition-colors">
+                            <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $user->code() }}</td>
                             <td class="px-4 py-3">
                                 <a class="flex items-center gap-3 min-w-0" href="{{ route('users.show', $user) }}" wire:navigate>
-                                    <x-ui.avatar :name="$user->name" size="w-10 h-10" />
-                                    <div class="min-w-0">
-                                        <p class="text-[13px] font-bold text-gray-800 truncate">{{ $user->name }}</p>
-                                        <p class="text-[11px] text-gray-400 truncate max-w-[180px]" dir="ltr">
-                                            {{ $user->email }}</p>
-                                    </div>
+                                    <x-ui.avatar :name="$user->name" size="w-9 h-9" />
+                                    <span class="text-[13px] font-bold text-gray-800 truncate">{{ $user->name }}</span>
                                 </a>
                             </td>
                             <td class="px-4 py-3 text-[12px] text-gray-600">{{ $user->department ?? '—' }}</td>
-                            <td class="px-4 py-3 text-[12px] font-semibold text-gray-700" dir="ltr">
-                                {{ $user->phone ?? '—' }}</td>
                             <td class="px-4 py-3"><x-ui.badge :status="$user->status->label()" dot /></td>
-                            <td class="px-4 py-3 text-[12px] text-gray-500" dir="ltr">
-                                {{ $user->created_at?->format('Y-m-d') }}</td>
+                            <td class="px-4 py-3 text-[12px] font-semibold text-gray-600" dir="ltr">
+                                {{ $user->hire_date?->format('Y-m-d') ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <x-ui.icon-btn icon="eye" label="عرض" :href="route('users.show', $user)" />

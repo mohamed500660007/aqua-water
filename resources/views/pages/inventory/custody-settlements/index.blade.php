@@ -34,16 +34,13 @@
         </form>
 
         <div class="overflow-x-auto scrollbar-hide" x-data>
-            <table class="w-full min-w-[860px]">
+            <table class="w-full min-w-[640px]">
                 <thead class="bg-gray-50/70 border-b border-gray-100">
                     <tr>
-                        <x-ui.th>رقم التسوية</x-ui.th>
-                        <x-ui.th>التاريخ</x-ui.th>
+                        <x-ui.th>كود الموظف</x-ui.th>
                         <x-ui.th>الموظف</x-ui.th>
-                        <x-ui.th>النوع</x-ui.th>
-                        <x-ui.th>السبب</x-ui.th>
-                        <x-ui.th>الأصناف / القطع</x-ui.th>
-                        <x-ui.th>الحالة</x-ui.th>
+                        <x-ui.th>الكمية</x-ui.th>
+                        <x-ui.th>التسوية</x-ui.th>
                         <x-ui.th align="left">إجراءات</x-ui.th>
                     </tr>
                 </thead>
@@ -51,26 +48,22 @@
                     @foreach ($settlements as $settlement)
                         @php($panel = Js::from(route('inventory.custody-settlements.panel', $settlement)))
                         <tr class="hover:bg-gray-50/70 transition-colors">
-                            <td class="px-4 py-3">
-                                <button class="text-[12.5px] font-black text-gray-800 hover:underline font-mono" dir="ltr" type="button"
-                                    x-on:click="$store.drawer.show({{ $panel }})">{{ $settlement->number() }}</button>
-                            </td>
-                            <td class="px-4 py-3 text-[12px] font-semibold text-gray-600 whitespace-nowrap" dir="ltr">
-                                {{ $settlement->settlement_date->format('Y-m-d') }}</td>
+                            <td class="px-4 py-3 text-[12px] font-bold text-gray-700" dir="ltr">{{ $settlement->user?->code() ?? '—' }}</td>
                             <td class="px-4 py-3">
                                 <a class="text-[13px] font-bold text-gray-800 hover:underline"
                                     href="{{ route('inventory.employee-stocks.show', $settlement->user_id) }}" wire:navigate>
                                     {{ $settlement->user?->name ?? '—' }}</a>
                             </td>
-                            <td class="px-4 py-3"><x-ui.badge :status="$settlement->type->label()" :tone="$settlement->type->tone()" /></td>
+                            <td class="px-4 py-3 text-[13px] font-black text-gray-800">{{ number_format((int) $settlement->pieces) }}</td>
                             <td class="px-4 py-3">
-                                <p class="text-[12.5px] font-semibold text-gray-700 truncate max-w-[220px]" title="{{ $settlement->reason }}">
-                                    {{ $settlement->reason }}</p>
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <x-ui.badge :status="$settlement->type->label()" :tone="$settlement->type->tone()" />
+                                    {{-- المسودة لم تمس رصيد العهدة بعد --}}
+                                    @if ($settlement->isDraft())
+                                        <x-ui.badge status="مسودة" tone="gray" />
+                                    @endif
+                                </div>
                             </td>
-                            <td class="px-4 py-3 text-[12.5px] text-gray-600">
-                                {{ $settlement->items_count }} / <b class="text-gray-800">{{ number_format((int) $settlement->pieces) }}</b>
-                            </td>
-                            <td class="px-4 py-3"><x-ui.badge :status="$settlement->status->label()" :tone="$settlement->status->tone()" dot /></td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center justify-end gap-1">
                                     <x-ui.icon-btn icon="eye" label="معاينة" tone="primary" x-on:click="$store.drawer.show({{ $panel }})" />
