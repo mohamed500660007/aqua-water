@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="16" fill="#1A1A1A"/>
+  <!-- وش قطة صغيرة -->
+  <path d="M14 26l4-14 12 10zM50 26l-4-14-12 10z" fill="#F97316"/>
+  <circle cx="32" cy="36" r="20" fill="#FB923C"/>
+  <ellipse cx="32" cy="44" rx="11" ry="8" fill="#FFEDD5"/>
+  <ellipse cx="25" cy="33" rx="4.5" ry="5.5" fill="#fff"/>
+  <ellipse cx="39" cy="33" rx="4.5" ry="5.5" fill="#fff"/>
+  <circle cx="26.5" cy="34" r="2.6" fill="#1A1A1A"/>
+  <circle cx="40.5" cy="34" r="2.6" fill="#1A1A1A"/>
+  <path d="M30 40l2 2.5 2-2.5z" fill="#F472B6"/>
+  <path d="M32 42.5q-3 4-6 2M32 42.5q3 4 6 2" fill="none" stroke="#1A1A1A" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- فأر صغير في الركن -->
+  <circle cx="52" cy="52" r="7" fill="#D6D3D1"/>
+  <circle cx="48" cy="46" r="3.2" fill="#D6D3D1"/>
+  <circle cx="56" cy="46" r="3.2" fill="#D6D3D1"/>
+  <circle cx="52" cy="54" r="1.4" fill="#F472B6"/>
+  <circle cx="50" cy="51" r="1" fill="#1A1A1A"/>
+  <circle cx="54" cy="51" r="1" fill="#1A1A1A"/>
+</svg>

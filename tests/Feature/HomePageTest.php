@@ -16,7 +16,7 @@ class HomePageTest extends TestCase
         $this->get('/dashboard')
             ->assertOk()
             ->assertViewIs('pages.home')
-            ->assertSee('أهلًا بك في');
+            ->assertSee('مرحبًا بكِ');
     }
 
     public function test_home_page_links_to_every_dashboard_section(): void
@@ -28,13 +28,17 @@ class HomePageTest extends TestCase
         }
     }
 
-    public function test_home_page_shows_quick_counts(): void
+    public function test_home_page_greets_the_accounts_manager_without_counters(): void
     {
         Customer::factory()->count(3)->create();
 
         $this->get(route('home'))
             ->assertOk()
-            ->assertViewHas('stats', fn (array $stats) => $stats['customers.index']['count'] === 3
-                && $stats['installments.index']['count'] === 0);
+            ->assertSee('مرحبًا بكِ يا أستاذة')
+            ->assertSee('هبة')
+            ->assertSee('مطاردة البيت')
+            ->assertSee('toonChase(', false)
+            ->assertSee(asset('favicon.svg'), false)
+            ->assertDontSee('3 عميل');
     }
 }

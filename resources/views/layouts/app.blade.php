@@ -7,6 +7,8 @@
     <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport" />
     <meta content="#FAFAFA" name="theme-color" />
 
+    <link href="{{ asset('favicon.svg') }}" rel="icon" type="image/svg+xml" />
+
     <title>@yield('title', 'لوحة التحكم') — أكوا ووتر</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>

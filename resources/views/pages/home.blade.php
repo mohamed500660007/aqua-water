@@ -10,8 +10,6 @@
         ['route' => 'customers.create', 'icon' => 'user-plus', 'label' => 'عميل جديد', 'variant' => 'glass'],
         ['route' => 'complaints.create', 'icon' => 'message-square-plus', 'label' => 'شكوى جديدة', 'variant' => 'glass'],
     ];
-    $navItems = collect($navGroups)->flatMap(fn (array $group) => $group['items']);
-    $navIcons = $navItems->pluck('icon', 'route');
     $tileIndex = 0;
 @endphp
 
@@ -188,51 +186,7 @@
         .home-action-glass { background: rgba(255, 255, 255, .08); color: #fff; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12); }
         .home-action-glass:hover { background: rgba(255, 255, 255, .14); }
 
-        .home-stat {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-width: 0;
-            padding: 12px 14px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, .06);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
-            backdrop-filter: blur(6px);
-            transition: background-color .25s ease, transform .25s cubic-bezier(.22, .9, .24, 1);
-        }
 
-        .home-stat:hover { background: rgba(255, 255, 255, .11); transform: translateY(-2px); }
-
-        .home-stat-icon {
-            width: 38px;
-            height: 38px;
-            flex-shrink: 0;
-            display: grid;
-            place-items: center;
-            border-radius: 12px;
-            background: var(--tone-soft);
-            color: var(--tone);
-        }
-
-        .home-stat-value {
-            display: block;
-            font-size: 22px;
-            font-weight: 800;
-            line-height: 1.1;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .home-stat-label {
-            display: block;
-            font-size: 11.5px;
-            line-height: 1.4;
-            color: rgba(255, 255, 255, .6);
-        }
-
-        /* على شبكة العمودين يأخذ المؤشر الأخير الفردي السطر كاملًا بدل أن يبقى وحيدًا في نصفه */
-        @media (max-width: 1023px) {
-            .home-stat:last-child:nth-child(odd) { grid-column: span 2; }
-        }
 
         /* ===== أقسام اللوحة ===== */
         .home-group-icon {
@@ -335,19 +289,6 @@
             transform: translateX(-4px);
         }
 
-        .home-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 1px 8px;
-            border-radius: 999px;
-            background: var(--tone-soft);
-            color: var(--tone);
-            box-shadow: inset 0 0 0 1px var(--tone-line);
-            font-size: 11px;
-            font-weight: 700;
-            white-space: nowrap;
-        }
 
         @media (prefers-reduced-motion: reduce) {
             .home-reveal, .home-emblem, .home-emblem .brand-logo-ring, .home-hero-waves svg, .brand-logo-wave { animation: none; }
@@ -380,10 +321,10 @@
                         <span x-text="`${greeting} · ${today}`">أهلًا بك</span>
                     </span>
 
-                    <h2 class="home-title mt-3" id="homeTitle">أهلًا بك في <em>أكوا ووتر</em></h2>
+                    <h2 class="home-title mt-3" id="homeTitle">مرحبًا بكِ يا أستاذة <em>هبة</em></h2>
                     <p class="mt-2 max-w-xl text-[14px] leading-7 text-white/60">
-                        كل أعمال الشركة في مكان واحد: البيع والتحصيل، والمخزون والعهد، والصيانة وفريق العمل.
-                        اختر القسم الذي تريده وابدأ.
+                        كل أعمال أكوا ووتر في مكان واحد: البيع والتحصيل، والمخزون والعهد، والصيانة وفريق العمل.
+                        اختاري القسم اللي محتاجاه وابدئي.
                     </p>
                 </div>
             </div>
@@ -397,22 +338,11 @@
                 @endforeach
             </div>
         </div>
-
-        <div class="mt-7 grid grid-cols-2 lg:grid-cols-5 gap-2.5">
-            @foreach ($stats as $route => $stat)
-                <a class="home-stat ui-tone-{{ $stat['tone'] }}" href="{{ $stat['href'] ?? route($route) }}" wire:navigate>
-                    <span class="home-stat-icon">
-                        <x-icon class="w-[18px] h-[18px]" :name="$navIcons[$route]" />
-                    </span>
-                    <span class="min-w-0">
-                        <span class="home-stat-value" dir="ltr" x-data="countUp({{ $stat['count'] }})" x-text="display">{{ number_format($stat['count']) }}</span>
-                        <span class="home-stat-label">{{ $stat['label'] }}</span>
-                    </span>
-                </a>
-            @endforeach
-        </div>
     </section>
     {{-- نهاية: بطاقة الترحيب --}}
+
+    {{-- لمسة مرحة: لعبة مطاردة على طريقة الكرتون القديم --}}
+    @include('pages.home.game')
 
     {{-- بداية: كل أقسام اللوحة — من نفس مصدر شريط التنقل (Lookups::navGroups) --}}
     <div class="mt-8 space-y-9">
@@ -425,26 +355,17 @@
                         <p class="text-[12.5px] text-gray-500 truncate">{{ $group['tagline'] }}</p>
                     </div>
                     <span class="home-group-line hidden sm:block"></span>
-                    <span class="hidden sm:inline text-[12px] font-bold text-gray-400 whitespace-nowrap">{{ count($group['items']) }} أقسام</span>
                 </header>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                     @foreach ($group['items'] as $item)
-                        @php($stat = $stats[$item['route']] ?? null)
                         <a class="home-tile home-reveal ui-tone-{{ $item['tone'] }}" href="{{ route($item['route']) }}" wire:navigate
                             style="--delay: {{ .25 + $tileIndex++ * .05 }}s">
                             <x-icon class="home-tile-watermark" :name="$item['icon']" />
                             <span class="home-tile-icon"><x-icon class="w-6 h-6" :name="$item['icon']" /></span>
 
                             <span class="flex-1 min-w-0">
-                                <span class="flex items-center gap-2 flex-wrap">
-                                    <b class="text-[15px] font-extrabold text-gray-900">{{ $item['label'] }}</b>
-                                    @if ($stat && $stat['count'] > 0)
-                                        <span class="home-badge ui-tone-{{ $stat['tone'] }}" dir="rtl">
-                                            <span dir="ltr">{{ number_format($stat['count']) }}</span> {{ $stat['label'] }}
-                                        </span>
-                                    @endif
-                                </span>
+                                <b class="block text-[15px] font-extrabold text-gray-900">{{ $item['label'] }}</b>
                                 <span class="block mt-1 text-[12.5px] leading-5 text-gray-500">{{ $item['hint'] }}</span>
                             </span>
 
@@ -459,7 +380,7 @@
 
     <p class="home-reveal mt-10 mb-2 flex items-center justify-center gap-2 text-[12px] text-gray-400" style="--delay: {{ .3 + $tileIndex * .05 }}s">
         <x-icon class="w-3.5 h-3.5" name="droplets" />
-        {{ $navItems->count() }} قسمًا في لوحة تحكم أكوا ووتر
+        لوحة تحكم أكوا ووتر
     </p>
 @endsection
 
@@ -743,32 +664,5 @@
             document.addEventListener('livewire:navigate', finish, { once: true });
         })();
 
-        // عدّاد يصعد من الصفر إلى القيمة — يبدأ بعد شاشة الترحيب إن كانت ظاهرة
-        function countUp(target) {
-            return {
-                display: Number(target).toLocaleString('en-US'),
-                init() {
-                    if (!target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-                    const start = () => {
-                        const duration = 1100;
-                        const began = performance.now();
-                        const step = (now) => {
-                            const progress = Math.min(1, (now - began) / duration);
-                            const eased = 1 - Math.pow(1 - progress, 3);
-                            this.display = Math.round(target * eased).toLocaleString('en-US');
-                            if (progress < 1) requestAnimationFrame(step);
-                        };
-                        requestAnimationFrame(step);
-                    };
-
-                    this.display = '0';
-                    const waitForSplash = () => document.documentElement.classList.contains('aq-splash-active')
-                        ? setTimeout(waitForSplash, 120)
-                        : setTimeout(start, 250);
-                    waitForSplash();
-                },
-            };
-        }
     </script>
 @endpush
