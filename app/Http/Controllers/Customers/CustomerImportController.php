@@ -10,7 +10,7 @@ use App\Http\Responses\XlsxDownload;
 use App\Support\Spreadsheets\SpreadsheetImportException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Response;
 
 class CustomerImportController extends Controller
 {
@@ -37,7 +37,7 @@ class CustomerImportController extends Controller
     }
 
     /** قالب فارغ بالأعمدة والقوائم المنسدلة لتملأه الموظفة ثم ترفعه */
-    public function template(CustomerSpreadsheet $spreadsheet): StreamedResponse
+    public function template(CustomerSpreadsheet $spreadsheet): Response
     {
         return XlsxDownload::make($spreadsheet->template(), 'aqua-water-customers-template.xlsx');
     }

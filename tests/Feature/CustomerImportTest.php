@@ -56,7 +56,7 @@ class CustomerImportTest extends TestCase
         $this->assertStringContainsString('spreadsheetml', $response->headers->get('Content-Type'));
 
         $path = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
-        file_put_contents($path, $response->streamedContent());
+        file_put_contents($path, $response->getContent());
         $sheet = IOFactory::load($path)->getSheet(0);
 
         $this->assertSame('اسم العميل *', $sheet->getCell('A1')->getValue());

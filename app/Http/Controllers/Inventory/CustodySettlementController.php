@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Inventory;
 
 use App\Domain\Inventory\Enums\CustodySettlementStatus;
 use App\Domain\Inventory\Enums\CustodySettlementType;
-use App\Domain\Inventory\Exceptions\InsufficientStockException;
 use App\Domain\Inventory\Exceptions\SettlementAlreadyPostedException;
+use App\Domain\Inventory\Exceptions\SettlementMatchesCustodyException;
 use App\Domain\Inventory\Models\CustodySettlement;
 use App\Domain\Inventory\Services\CustodySettlementService;
 use App\Domain\Inventory\Services\EmployeeStockService;
@@ -61,7 +61,7 @@ class CustodySettlementController extends Controller
     {
         try {
             $settlement = $this->settlements->create($request->toData(), $request->shouldPost());
-        } catch (InsufficientStockException $exception) {
+        } catch (SettlementMatchesCustodyException $exception) {
             return back()->withInput()->withErrors(['items' => $exception->getMessage()]);
         }
 
@@ -76,7 +76,7 @@ class CustodySettlementController extends Controller
         }
 
         return view('pages.inventory.custody-settlements.edit', $this->formData($employeeStock) + [
-            'settlement' => $settlement->load('items:id,custody_settlement_id,product_id,quantity'),
+            'settlement' => $settlement->load('items:id,custody_settlement_id,product_id,counted_quantity'),
         ]);
     }
 
@@ -84,7 +84,7 @@ class CustodySettlementController extends Controller
     {
         try {
             $settlement = $this->settlements->update($settlement, $request->toData(), $request->shouldPost());
-        } catch (InsufficientStockException $exception) {
+        } catch (SettlementMatchesCustodyException $exception) {
             return back()->withInput()->withErrors(['items' => $exception->getMessage()]);
         } catch (SettlementAlreadyPostedException $exception) {
             return redirect()->route('inventory.custody-settlements.index')->with('error', $exception->getMessage());
@@ -97,7 +97,7 @@ class CustodySettlementController extends Controller
     {
         try {
             $this->settlements->post($settlement);
-        } catch (InsufficientStockException|SettlementAlreadyPostedException $exception) {
+        } catch (SettlementMatchesCustodyException|SettlementAlreadyPostedException $exception) {
             return back()->with('error', "تعذّر ترحيل التسوية {$settlement->number()}. {$exception->getMessage()}");
         }
 
@@ -132,7 +132,6 @@ class CustodySettlementController extends Controller
         return [
             'employees' => $this->employees(),
             'products' => Product::query()->orderBy('name')->pluck('name', 'id')->all(),
-            'types' => CustodySettlementType::options(),
             'availability' => $employeeStock->availabilityMatrix(),
         ];
     }

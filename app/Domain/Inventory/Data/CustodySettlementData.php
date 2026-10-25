@@ -2,17 +2,15 @@
 
 namespace App\Domain\Inventory\Data;
 
-use App\Domain\Inventory\Enums\CustodySettlementType;
-
 /**
- * مدخلات تسوية عهدة موظف — اتجاه واحد للمستند كله وأكثر من منتج بكميات موجبة.
+ * مدخلات تسوية عهدة موظف بالجرد: لكل منتج الكمية الفعلية التي رجع بها الموظف (quantity)،
+ * والفرق عن رصيد عهدته يحدد إشارة التسوية.
  */
 final readonly class CustodySettlementData
 {
-    /** @param  list<ProductQuantityData>  $items */
+    /** @param  list<ProductQuantityData>  $items  الكمية = المجرودة فعليًا */
     public function __construct(
         public int $userId,
-        public CustodySettlementType $type,
         public string $settlementDate,
         public string $reason,
         public array $items,
@@ -24,11 +22,10 @@ final readonly class CustodySettlementData
     {
         return new self(
             userId: (int) $validated['user_id'],
-            type: CustodySettlementType::from($validated['type']),
             settlementDate: $validated['settlement_date'],
             reason: $validated['reason'],
             items: array_map(
-                fn (array $item) => ProductQuantityData::fromArray($item),
+                fn (array $item) => new ProductQuantityData((int) $item['product_id'], (int) $item['counted_quantity']),
                 array_values($validated['items'] ?? []),
             ),
             note: $validated['note'] ?? null,

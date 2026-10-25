@@ -1,7 +1,7 @@
 {{-- محتوى لوحة معاينة تسوية العهدة (يُحقن داخل x-ui.drawer). --}}
 @php
-    $pieces = $settlement->items->sum('quantity');
-    $sign = $settlement->type === \App\Domain\Inventory\Enums\CustodySettlementType::Negative ? '-' : '+';
+    $shortage = $settlement->items->sum(fn ($item) => max(0, -$item->difference()));
+    $surplus = $settlement->items->sum(fn ($item) => max(0, $item->difference()));
 @endphp
 
 <div class="flex-1 min-h-0 flex flex-col">
@@ -34,7 +34,7 @@
             </div>
             <div class="rounded-xl bg-brand-green text-brand-dark px-2.5 py-2">
                 <p class="text-[10px] font-bold opacity-70">أثرها على العهدة</p>
-                <p class="text-[15px] font-black" dir="ltr">{{ $sign }}{{ number_format($pieces) }}</p>
+                <p class="text-[15px] font-black" dir="ltr">−{{ number_format($shortage) }} / +{{ number_format($surplus) }}</p>
             </div>
         </div>
     </header>
@@ -60,9 +60,9 @@
                 <thead class="bg-gray-50 text-[11px] text-gray-500">
                     <tr>
                         <th class="px-4 py-2.5 text-right font-bold">الصنف</th>
-                        <th class="px-3 py-2.5 text-right font-bold">الكمية</th>
-                        <th class="px-3 py-2.5 text-right font-bold">قبل</th>
-                        <th class="px-4 py-2.5 text-left font-bold">بعد</th>
+                        <th class="px-3 py-2.5 text-right font-bold">في العهدة</th>
+                        <th class="px-3 py-2.5 text-right font-bold">الفعلي</th>
+                        <th class="px-4 py-2.5 text-left font-bold">الفرق</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">
@@ -72,16 +72,16 @@
                                 <p class="font-bold text-gray-700">{{ $item->product?->name ?? 'منتج محذوف' }}</p>
                                 <p class="text-[10.5px] text-gray-400" dir="ltr">{{ $item->product?->sku }}</p>
                             </td>
-                            <td class="px-3 py-2.5 font-black text-gray-800" dir="ltr">{{ $sign }}{{ number_format($item->quantity) }}</td>
-                            <td class="px-3 py-2.5 text-gray-500">{{ $item->balance_before ?? '—' }}</td>
-                            <td class="px-4 py-2.5 text-left font-black text-gray-800">{{ $item->balance_after ?? '—' }}</td>
+                            <td class="px-3 py-2.5 text-gray-500">{{ number_format((int) $item->balance_before) }}</td>
+                            <td class="px-3 py-2.5 font-bold text-gray-800">{{ number_format((int) $item->counted_quantity) }}</td>
+                            <td @class(['px-4 py-2.5 text-left font-black', 'text-red-600' => $item->difference() < 0, 'text-green-700' => $item->difference() > 0, 'text-gray-400' => $item->difference() === 0]) dir="ltr">{{ $item->signedDifference() }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
             @if ($settlement->isDraft())
                 <p class="px-4 py-2.5 text-[11px] text-amber-700 bg-amber-50 border-t border-amber-100">
-                    الرصيد قبل/بعد يُسجَّل لحظة الترحيل.</p>
+                    «في العهدة» والفرق معاينة وقت حفظ المسودة — يُعاد حسابهما من العهدة لحظة الترحيل.</p>
             @endif
         </section>
 
