@@ -63,7 +63,7 @@ class PurchaseOrderManagementTest extends TestCase
         $this->order(['supplier' => 'أكوا تك', 'items' => [['product_id' => $this->cartridge->id, 'quantity' => 5, 'unit_price' => 100]]]);
 
         // كل صف منتج داخل طلبية: البحث بالمنتج يعرض بنده وحده، والبحث بالطلبية أو المورد يعرض كل بنودها
-        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'PO-0002']))->viewData('items')->items());
+        $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => PurchaseOrder::query()->latest('id')->first()->number()]))->viewData('items')->items());
         $this->assertCount(2, $this->get(route('inventory.purchase-orders.index', ['q' => 'النيل']))->viewData('items')->items());
         $this->assertCount(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'فلتر سبع']))->viewData('items')->items());
         $this->assertSame(1, $this->get(route('inventory.purchase-orders.index', ['q' => 'أكوا تك']))->viewData('summary')['orders']);
@@ -104,7 +104,7 @@ class PurchaseOrderManagementTest extends TestCase
         $this->get(route('inventory.purchase-orders.panel', PurchaseOrder::sole()))
             ->assertOk()
             ->assertDontSee('<html', false)
-            ->assertSee('PO-0001')
+            ->assertSee(PurchaseOrder::sole()->number())
             ->assertSee('فلتر سبع مراحل')
             ->assertSee('وصلت مع مندوب المورد');
     }

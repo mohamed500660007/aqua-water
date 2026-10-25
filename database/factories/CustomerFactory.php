@@ -18,7 +18,7 @@ class CustomerFactory extends Factory
         return [
             'code' => 'CUS-'.str_pad((string) fake()->unique()->numberBetween(1, 99999), 5, '0', STR_PAD_LEFT),
             'name' => fake()->name(),
-            'national_id' => fake()->unique()->numerify('2##############'),
+            'national_id' => fake()->unique()->numerify('2#############'),
             'governorate' => fake()->randomElement(['القاهرة', 'الجيزة', 'الدقهلية']),
             'center' => fake()->randomElement(['المنصورة', 'طلخا', 'ميت غمر']),
             'village' => fake()->randomElement(['كفر الجنينة', 'ميت مزاح', 'البقاشين']),

@@ -90,7 +90,8 @@ return new class extends Migration
             $table->decimal('unit_price', 12, 2)->default(0);
             $table->timestamps();
 
-            $table->unique(['maintenance_operation_id', 'position']);
+            // الاسم التلقائي يتجاوز حد MySQL (64 حرفًا)
+            $table->unique(['maintenance_operation_id', 'position'], 'mo_items_operation_position_unique');
             $table->index('product_id');
         });
     }

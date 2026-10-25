@@ -36,14 +36,15 @@ return new class extends Migration
         Schema::table('maintenance_operation_items', function (Blueprint $table) {
             // في MySQL قد يعتمد المفتاح الأجنبي على الفهرس المركّب، فيُضاف فهرس مستقل قبل حذفه
             $table->index('maintenance_operation_id');
-            $table->dropUnique(['maintenance_operation_id', 'position']);
+            $table->dropUnique('mo_items_operation_position_unique');
         });
 
         Schema::table('maintenance_operation_items', function (Blueprint $table) {
             $table->dropColumn('position');
             // بند الخطة يُعاد إنشاؤه عند تغيير خطة العقد، فيبقى سجل العملية بلا رابط
+            // أسماء صريحة لأن التلقائية تتجاوز حد MySQL (64 حرفًا)
             $table->foreignId('sales_contract_maintenance_item_id')->nullable()->after('maintenance_operation_id')
-                ->constrained()->nullOnDelete();
+                ->constrained('sales_contract_maintenance_items', 'id', 'mo_items_contract_candle_foreign')->nullOnDelete();
             $table->date('previous_replacement_date')->nullable();
             $table->date('previous_last_replaced_at')->nullable();
         });
@@ -106,13 +107,14 @@ return new class extends Migration
         });
 
         Schema::table('maintenance_operation_items', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('sales_contract_maintenance_item_id');
+            $table->dropForeign('mo_items_contract_candle_foreign');
+            $table->dropColumn('sales_contract_maintenance_item_id');
             $table->dropColumn(['previous_replacement_date', 'previous_last_replaced_at']);
             $table->unsignedTinyInteger('position')->default(0);
         });
 
         Schema::table('maintenance_operation_items', function (Blueprint $table) {
-            $table->unique(['maintenance_operation_id', 'position']);
+            $table->unique(['maintenance_operation_id', 'position'], 'mo_items_operation_position_unique');
             $table->dropIndex(['maintenance_operation_id']);
         });
 

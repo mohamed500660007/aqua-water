@@ -207,7 +207,7 @@ class CustodySettlementManagementTest extends TestCase
 
         $this->get(route('inventory.employee-stocks.show', $this->technician))
             ->assertOk()
-            ->assertSee('ST-0001')
+            ->assertSee(CustodySettlement::sole()->number())
             ->assertSee('عجز في الجرد')
             ->assertSee('تسوية بالسالب');
     }

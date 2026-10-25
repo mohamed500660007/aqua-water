@@ -208,7 +208,7 @@ class ContractImportTest extends TestCase
             'items' => [['product_id' => $this->device->id, 'quantity' => 5]],
         ])->assertSessionHasNoErrors();
 
-        $this->assertSame(5, $contract->fresh()->items()->sum('quantity'));
+        $this->assertSame(5, (int) $contract->fresh()->items()->sum('quantity'));
         $this->assertSame(3, app(StockService::class)->available($this->device->id, $this->warehouse->id));
     }
 
