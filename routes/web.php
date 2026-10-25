@@ -13,6 +13,7 @@ use App\Http\Controllers\Maintenance\MaintenanceController;
 use App\Http\Controllers\Maintenance\MaintenancePlanController;
 use App\Http\Controllers\Payroll\PayrollController;
 use App\Http\Controllers\Products\ProductController;
+use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Sales\ContractImportController;
 use App\Http\Controllers\Sales\InstallmentController;
 use App\Http\Controllers\Sales\SalesContractController;
@@ -27,6 +28,16 @@ Route::redirect('/', '/dashboard');
 
 Route::prefix('dashboard')->group(function () {
     Route::get('/', HomeController::class)->name('home');
+
+    // ملف التقارير: فهرس كل تقارير الشركة + تقارير الإدارة العابرة للوحدات
+    Route::prefix('reports')->name('reports.')->controller(ReportController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('executive', 'executive')->name('executive');
+        Route::get('finance', 'finance')->name('finance');
+        Route::get('custody', 'custody')->name('custody');
+        Route::get('maintenance', 'maintenance')->name('maintenance');
+        Route::get('after-sales', 'afterSales')->name('after-sales');
+    });
 
     // قبل الـ resource حتى لا يُفهم «report» كمعرّف عقد
     Route::get('contracts/report', [SalesContractController::class, 'report'])->name('contracts.report');
