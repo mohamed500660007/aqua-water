@@ -152,7 +152,8 @@ class PayrollManagementTest extends TestCase
         $this->assertSame(5300.0, $september->viewData('totals')['net']);
 
         // كشف معتمد بصافي صفر: لا يظهر كأنه «تم الصرف»
-        $idle = User::factory()->create(['name' => 'موظف بلا مستحقات', 'base_salary' => 0]);
+        // القسم ثابت حتى لا يقع عشوائيًا في «السكرتارية» فيدخل في فلتر القسم أدناه
+        $idle = User::factory()->create(['name' => 'موظف بلا مستحقات', 'base_salary' => 0, 'department' => 'الإدارة']);
         $this->post(route('payroll.store', $idle), [
             'month' => '2026-09', 'base_salary' => 0, 'installment_count' => 0, 'installment_commission' => 0,
             'installed_device_count' => 0, 'installation_commission' => 0, 'marketed_device_count' => 0, 'marketing_commission' => 0,

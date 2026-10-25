@@ -109,11 +109,37 @@ class SalesContractRequest extends FormRequest
         }
 
         $data = $this->toData();
-        $error = SalesContractInput::moneyError($data, app(ContractPricing::class)->forContract($data)['subtotal']);
+        $subtotal = app(ContractPricing::class)->forContract($data)['subtotal'];
+        $contract = $this->route('contract');
+
+        // بعد بدء التحصيل الحسابات ثابتة: المدفوع يشمل الأقساط المحصّلة، فقواعد المقدم لا تنطبق عليه
+        if ($contract instanceof SalesContract && $contract->hasCollections()) {
+            if ($this->changesFinancialTerms($contract, $data, $subtotal)) {
+                $validator->errors()->add('paid', 'بدأ تحصيل أقساط هذا العقد، فلا يمكن تغيير البنود أو الأسعار أو الخصم أو الفائدة أو المدفوع أو بيانات الأقساط.');
+            }
+
+            return;
+        }
+
+        $error = SalesContractInput::moneyError($data, $subtotal);
 
         if ($error) {
             $validator->errors()->add(...$error);
         }
+    }
+
+    private function changesFinancialTerms(SalesContract $contract, SalesContractData $data, float $subtotal): bool
+    {
+        $differs = fn ($stored, float $submitted) => abs((float) $stored - $submitted) > 0.009;
+
+        return $contract->type !== $data->type
+            || $differs($contract->subtotal, $subtotal)
+            || $differs($contract->discount, $data->discount)
+            || $differs($contract->interest, $data->interest)
+            || $differs($contract->paid, $data->paid)
+            || $contract->installments_count !== $data->installmentsCount
+            || $contract->installment_period_months !== $data->installmentPeriodMonths
+            || $contract->first_due_date?->toDateString() !== $data->firstDueDate;
     }
 
     /**

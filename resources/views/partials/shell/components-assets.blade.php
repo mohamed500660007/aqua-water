@@ -119,7 +119,7 @@
         }
 
         #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr > td {
-            border-bottom: 1px solid #F2F4F6;
+            border-bottom: 1px solid #E3E6EA;
             transition: background-color .2s ease, box-shadow .2s ease;
         }
 
@@ -128,28 +128,15 @@
         #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover { background: transparent !important; }
         #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover > td { background-color: #FBFDF2; }
 
-        /* فواصل الأعمدة: خط رأسي متدرّج من البنفسجي إلى الليموني (ألوان الهوية) يتلاشى عند طرفيه،
-           على الحافة البادئة لكل خلية بعد الأولى (اليمين في الواجهة العربية) */
-        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr > td + td {
-            background-image: linear-gradient(to bottom, transparent, #D3C2FC 18%, #C9EE5A 82%, transparent);
-            background-repeat: no-repeat;
-            background-size: 2px 70%;
-            background-position: right center;
-            transition: background-color .2s ease, background-size .35s var(--ui-ease), box-shadow .2s ease;
-        }
-
-        /* عند المرور تمتد فواصل الصف لكامل ارتفاعه وتشتد ألوانها */
-        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr:hover > td + td {
-            background-image: linear-gradient(to bottom, transparent, #A98BF5 15%, #A6D619 85%, transparent);
-            background-size: 2px 100%;
-        }
-
-        /* فواصل العناوين: نفس التدرّج بدرجة أعمق وأقصر */
+        /* فواصل الأعمدة: خط رأسي متصل بكامل ارتفاع الجدول (من العناوين لآخر صف) على الحافة البادئة
+           لكل خلية بعد الأولى (اليمين في الواجهة العربية) */
+        #appContent table:not(.rpt-table):not(.rpt-figures) > tbody > tr > td + td,
         #appContent table:not(.rpt-table):not(.rpt-figures) > thead th + th {
-            background-image: linear-gradient(to bottom, transparent, #9B7BF0 22%, #9CCB12 78%, transparent);
-            background-repeat: no-repeat;
-            background-size: 2px 22px;
-            background-position: right center;
+            border-right: 1px solid #D3D8DE;
+        }
+
+        #appContent table:not(.rpt-table):not(.rpt-figures) > thead th {
+            border-bottom: 1px solid #D3D8DE;
         }
 
         /* شريط ليموني على حافة الصف عند المرور */

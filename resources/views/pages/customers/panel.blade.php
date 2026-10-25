@@ -310,8 +310,8 @@
                             </div>
                         @endif
 
-                        <div class="rounded-xl bg-gray-50 p-3 grid grid-cols-5 gap-2 text-center">
-                            @foreach ([['قبل الخصم', $contract->subtotal], ['الخصم', $contract->discount], ['الإجمالي', $contract->total], ['المدفوع', $contract->paid], ['المتبقي', $contract->remaining]] as [$label, $value])
+                        <div @class(['rounded-xl bg-gray-50 p-3 grid gap-2 text-center', 'grid-cols-6' => $contract->isInstallment(), 'grid-cols-5' => ! $contract->isInstallment()])>
+                            @foreach ($contract->moneyBreakdown() as $label => $value)
                                 <div>
                                     <p class="text-[10px] font-bold text-gray-400">{{ $label }}</p>
                                     <p @class(['text-[12.5px] font-black', 'text-red-600' => $loop->last && $value > 0, 'text-gray-800' => ! ($loop->last && $value > 0)])>{{ $money($value) }}</p>

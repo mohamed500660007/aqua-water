@@ -23,7 +23,7 @@ class ContractImporter
     private const DATE_COLUMNS = ['contract_date', 'first_due_date', 'installation_date', 'maintenance_date', 'collection_date'];
 
     private const NUMBER_COLUMNS = [
-        'price', 'discount', 'paid', 'installments_count', 'installment_period_months',
+        'price', 'discount', 'interest', 'paid', 'installments_count', 'installment_period_months',
         'quantity_1', 'quantity_2', 'quantity_3', 'unit_price_1', 'unit_price_2', 'unit_price_3',
     ];
 
@@ -110,6 +110,7 @@ class ContractImporter
             'price' => $values['price'],
             'discount' => $values['discount'],
             'paid' => $values['paid'],
+            'interest' => $values['interest'],
             'installments_count' => $values['installments_count'],
             'installment_period_months' => $values['installment_period_months'] ?: ($isInstallment ? 1 : null),
             'first_due_date' => $values['first_due_date'],

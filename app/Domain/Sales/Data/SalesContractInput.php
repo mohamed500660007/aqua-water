@@ -50,6 +50,7 @@ final class SalesContractInput
 
             'discount' => ['nullable', 'numeric', 'min:0'],
             'paid' => ['nullable', 'numeric', 'min:0'],
+            'interest' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
 
             'installments_count' => [Rule::requiredIf($isInstallment), 'nullable', 'integer', 'min:1', 'max:120'],
             'installment_period_months' => [Rule::requiredIf($isInstallment), 'nullable', 'integer', 'min:1', 'max:12'],
@@ -80,6 +81,7 @@ final class SalesContractInput
             'items' => $isMaintenance ? [] : $items,
             'discount' => ($input['discount'] ?? null) ?: 0,
             'paid' => ($input['paid'] ?? null) ?: 0,
+            'interest' => ($input['interest'] ?? null) ?: 0,
             'notes' => trim((string) ($input['notes'] ?? '')) ?: null,
             'collection_date' => ($input['collection_date'] ?? null) ?: null,
             'maintenance_plan_id' => ($input['maintenance_plan_id'] ?? null) ?: null,
@@ -93,7 +95,8 @@ final class SalesContractInput
     }
 
     /**
-     * الخصم لا يتجاوز الإجمالي، والمدفوع لا يتجاوز المستحق، والتقسيط يحتاج مبلغًا متبقيًا.
+     * الخصم لا يتجاوز السعر، والمدفوع لا يتجاوز الإجمالي، والتقسيط يحتاج مبلغًا متبقيًا من سعر العقد
+     * نفسه بعد المقدم — الفائدة وحدها لا تكفي لإنشاء تقسيط.
      *
      * @return array{0: string, 1: string}|null [الحقل، الرسالة] أو null لو سليم
      */
@@ -103,14 +106,14 @@ final class SalesContractInput
             return ['discount', 'الخصم لا يمكن أن يتجاوز سعر العقد.'];
         }
 
-        $total = round($subtotal - $data->discount, 2);
+        $priceAfterDiscount = round($subtotal - $data->discount, 2);
 
-        if ($data->paid > $total) {
+        if ($data->paid > round($priceAfterDiscount + $data->interest, 2)) {
             return ['paid', 'المبلغ المدفوع لا يمكن أن يتجاوز إجمالي العقد.'];
         }
 
-        if ($data->type === ContractType::Installment && round($total - $data->paid, 2) <= 0) {
-            return ['paid', 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد.'];
+        if ($data->type === ContractType::Installment && round($priceAfterDiscount - $data->paid, 2) <= 0) {
+            return ['paid', 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد بعد المقدم.'];
         }
 
         return null;
@@ -139,6 +142,7 @@ final class SalesContractInput
             'items.*.quantity' => 'الكمية',
             'discount' => 'الخصم',
             'paid' => 'المبلغ المدفوع',
+            'interest' => 'الفائدة',
             'installments_count' => 'عدد الأقساط',
             'installment_period_months' => 'دورية السداد',
             'first_due_date' => 'تاريخ أول استحقاق',

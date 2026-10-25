@@ -24,6 +24,12 @@ class SalesContract extends Model
 
     public const SORTABLE = ['code', 'contract_date', 'total', 'remaining', 'created_at'];
 
+    /** حسابات العقد التي تُثبَّت بمجرد تحصيل أي قسط، لأن جدول الأقساط نفسه يثبت عندها */
+    public const FINANCIAL_COLUMNS = [
+        'type', 'subtotal', 'discount', 'interest', 'total', 'paid', 'remaining',
+        'installments_count', 'installment_period_months', 'first_due_date', 'installment_amount',
+    ];
+
     protected $fillable = [
         'code',
         'kind',
@@ -42,6 +48,7 @@ class SalesContract extends Model
         'notes',
         'subtotal',
         'discount',
+        'interest',
         'total',
         'paid',
         'remaining',
@@ -67,6 +74,7 @@ class SalesContract extends Model
             'legal_referred_at' => 'date',
             'subtotal' => 'decimal:2',
             'discount' => 'decimal:2',
+            'interest' => 'decimal:2',
             'total' => 'decimal:2',
             'paid' => 'decimal:2',
             'remaining' => 'decimal:2',
@@ -158,6 +166,35 @@ class SalesContract extends Model
     public function isMaintenance(): bool
     {
         return $this->kind === ContractKind::Maintenance;
+    }
+
+    /** هل بدأ تحصيل أقساط العقد؟ عندها تثبت حساباته وجدول أقساطه */
+    public function hasCollections(): bool
+    {
+        return $this->installments()->whereNotNull('paid_at')->exists();
+    }
+
+    /** سعر العقد بعد الخصم وقبل الفائدة */
+    public function priceAfterDiscount(): float
+    {
+        return round((float) $this->subtotal - (float) $this->discount, 2);
+    }
+
+    /**
+     * أرقام حساب العقد بالترتيب الذي تُعرض به: الفائدة تظهر لعقود التقسيط فقط.
+     *
+     * @return array<string, float>
+     */
+    public function moneyBreakdown(): array
+    {
+        return array_filter([
+            'قبل الخصم' => (float) $this->subtotal,
+            'الخصم' => (float) $this->discount,
+            'الفائدة' => $this->isInstallment() ? (float) $this->interest : null,
+            'الإجمالي' => (float) $this->total,
+            'المدفوع' => (float) $this->paid,
+            'المتبقي' => (float) $this->remaining,
+        ], fn ($value) => $value !== null);
     }
 
     public function isReferredToLegal(): bool

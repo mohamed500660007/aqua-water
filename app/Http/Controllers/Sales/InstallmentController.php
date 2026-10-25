@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Sales;
 
 use App\Domain\Customers\Models\Customer;
 use App\Domain\Sales\Models\SalesContractInstallment;
+use App\Domain\Sales\Services\InstallmentReport;
 use App\Domain\Sales\Services\SalesContractService;
 use App\Domain\Users\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\CollectInstallmentRequest;
+use App\Http\Requests\Sales\InstallmentReportRequest;
+use App\Support\Lookups;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,8 +52,43 @@ class InstallmentController extends Controller
         return view('pages.installments.index', [
             'installments' => $installments,
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
-            'technicians' => User::query()->whereIn('role', ['محصل', 'فني تركيب'])->orderBy('name')->pluck('name', 'id')->all(),
+            'technicians' => $this->collectors(),
             'salesReps' => User::query()->whereIn('role', ['مندوب مبيعات', 'مندوبة', 'سكرتارية'])->orderBy('name')->pluck('name', 'id')->all(),
+        ]);
+    }
+
+    public function report(InstallmentReportRequest $request, InstallmentReport $report): View
+    {
+        $period = $request->period();
+        $filters = $request->filters();
+        $level = $request->areaLevel();
+
+        // الأجزاء غير المطلوبة للطباعة لا تُحسب أصلًا
+        $collections = $request->includes('collections') ? $report->collections($period, $filters, $level) : collect();
+        $overdue = $request->includes('overdue') ? $report->overdue($period, $filters) : collect();
+        $firstPayments = $request->includes('milestones') ? $report->firstPayments($period, $filters) : collect();
+        $finished = $request->includes('milestones') ? $report->finished($period, $filters) : collect();
+
+        return view('pages.installments.report', [
+            'period' => $period,
+            'content' => $request->content(),
+            'filters' => $filters,
+            'areaLevel' => $level,
+            'overdueCutoff' => $report->overdueCutoff($period),
+            'summary' => $report->summary($period, $filters),
+            'areas' => $request->includes('collections') ? $report->collectionsByArea($period, $filters, $level) : collect(),
+            'collections' => $collections->take(InstallmentReport::MAX_ROWS),
+            'overdue' => $overdue->take(InstallmentReport::MAX_ROWS),
+            'firstPayments' => $firstPayments->take(InstallmentReport::MAX_ROWS),
+            'finished' => $finished->take(InstallmentReport::MAX_ROWS),
+            'truncated' => collect([$collections, $overdue, $firstPayments, $finished])
+                ->contains(fn ($rows) => $rows->count() > InstallmentReport::MAX_ROWS),
+            'contents' => InstallmentReportRequest::CONTENTS,
+            'areaLevels' => InstallmentReport::AREA_LEVELS,
+            'collectors' => $this->collectors(),
+            'governorates' => collect(Lookups::governorates())->merge(Customer::usedValuesOf('governorate'))->unique()->values()->all(),
+            'centers' => Customer::usedValuesOf('center'),
+            'villages' => Customer::usedValuesOf('village'),
         ]);
     }
 
@@ -110,5 +148,11 @@ class InstallmentController extends Controller
         $this->contracts->uncollectInstallment($installment);
 
         return back()->with('success', "تم التراجع عن تحصيل القسط رقم {$installment->number}.");
+    }
+
+    /** @return array<int, string> */
+    private function collectors(): array
+    {
+        return User::query()->whereIn('role', ['محصل', 'فني تركيب'])->orderBy('name')->pluck('name', 'id')->all();
     }
 }

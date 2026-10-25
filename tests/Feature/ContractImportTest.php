@@ -18,6 +18,7 @@ use App\Domain\Users\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
@@ -94,7 +95,11 @@ class ContractImportTest extends TestCase
         file_put_contents($path, $response->streamedContent());
         $spreadsheet = IOFactory::load($path);
 
-        $this->assertSame('العميل (كود أو هاتف) *', $spreadsheet->getSheet(0)->getCell('B1')->getValue());
+        $sheet = $spreadsheet->getSheet(0);
+        // نفس ترتيب جدول العقود: العميل ثم تاريخ العقد أول عمودين
+        $this->assertSame('العميل (كود أو هاتف) *', $sheet->getCell('A1')->getValue());
+        $this->assertSame('تاريخ العقد *', $sheet->getCell('B1')->getValue());
+        $this->assertSame(Border::BORDER_THIN, $sheet->getStyle('C10')->getBorders()->getRight()->getBorderStyle());
         $lists = collect($spreadsheet->getSheetByName('قوائم')->toArray())->flatten()->filter()->all();
         $this->assertContains('فلتر أكوا برو', $lists);
         $this->assertContains('محمود الفني', $lists);

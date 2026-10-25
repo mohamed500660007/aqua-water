@@ -10,9 +10,11 @@ use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Maintenance\Models\MaintenancePlan;
 use App\Domain\Products\Models\Product;
+use App\Domain\Sales\Data\CollectInstallmentData;
 use App\Domain\Sales\Enums\ContractType;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Sales\Models\SalesContract;
+use App\Domain\Sales\Services\SalesContractService;
 use App\Domain\Users\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -174,6 +176,71 @@ class SalesContractManagementTest extends TestCase
 
         // مجموع الأقساط يساوي المتبقي تمامًا رغم التقريب
         $this->assertSame(7600.0, round($installments->sum(fn ($i) => (float) $i->amount), 2));
+    }
+
+    public function test_installment_interest_is_added_to_the_total_and_split_across_installments(): void
+    {
+        // 10,400 − خصم 400 = 10,000 ، مقدم 2,400 → متبقٍّ 7,600 + فائدة 1,400 = 9,000 على 6 أقساط
+        $this->post(route('contracts.store'), $this->installmentPayload(['interest' => 1400]))
+            ->assertSessionHasNoErrors();
+
+        $contract = SalesContract::sole();
+
+        $this->assertSame('1400.00', $contract->interest);
+        $this->assertSame('11400.00', $contract->total);
+        $this->assertSame('2400.00', $contract->paid);
+        $this->assertSame('9000.00', $contract->remaining);
+        $this->assertSame('1500.00', $contract->installment_amount);
+        $this->assertSame(10000.0, $contract->priceAfterDiscount());
+        $this->assertSame(9000.0, round($contract->installments->sum(fn ($i) => (float) $i->amount), 2));
+
+        $this->get(route('contracts.show', $contract))->assertOk()->assertSee('الفائدة')->assertSee('11,400');
+        $this->get(route('contracts.panel', $contract))->assertOk()->assertSee('فائدة التقسيط');
+    }
+
+    public function test_cash_contracts_carry_no_interest(): void
+    {
+        $this->post(route('contracts.store'), $this->validPayload(['interest' => 500]))->assertSessionHasNoErrors();
+
+        $contract = SalesContract::sole();
+
+        $this->assertSame('0.00', $contract->interest);
+        $this->assertSame('10000.00', $contract->total);
+    }
+
+    public function test_interest_alone_cannot_create_an_installment_balance(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload(['paid' => 10000, 'interest' => 500]))
+            ->assertSessionHasErrors('paid');
+
+        $this->assertDatabaseCount('sales_contracts', 0);
+    }
+
+    public function test_financial_terms_are_locked_once_an_installment_is_collected(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload(['interest' => 1400]));
+        $contract = SalesContract::sole();
+
+        app(SalesContractService::class)->collectInstallment(
+            $contract->installments->first(),
+            new CollectInstallmentData(amount: 1500, paidAt: '2026-09-01'),
+        );
+        $contract->refresh();
+
+        // المدفوع الآن يشمل القسط المحصّل
+        $unchanged = $this->installmentPayload(['interest' => 1400, 'paid' => 3900, 'notes' => 'ملاحظة جديدة']);
+
+        $this->put(route('contracts.update', $contract), ['interest' => 2000] + $unchanged)
+            ->assertSessionHasErrors('paid');
+
+        $this->put(route('contracts.update', $contract), $unchanged)->assertSessionHasNoErrors();
+
+        $contract->refresh();
+        $this->assertSame('ملاحظة جديدة', $contract->notes);
+        $this->assertSame('7500.00', $contract->remaining);
+        $this->assertSame('1500.00', $contract->installment_amount);
+        $this->assertCount(6, $contract->installments);
+        $this->get(route('contracts.edit', $contract))->assertOk()->assertSee('بدأ تحصيل أقساط هذا العقد');
     }
 
     public function test_installment_periods_longer_than_a_month_are_supported(): void

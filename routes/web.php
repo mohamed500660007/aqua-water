@@ -41,6 +41,7 @@ Route::prefix('dashboard')->group(function () {
     Route::delete('contracts/{contract}/legal', [SalesContractController::class, 'withdrawFromLegal'])->name('contracts.legal.destroy');
 
     Route::get('installments', [InstallmentController::class, 'index'])->name('installments.index');
+    Route::get('installments/report', [InstallmentController::class, 'report'])->name('installments.report');
     Route::get('installments/print', [InstallmentController::class, 'printBatch'])->name('installments.print');
     Route::post('installments/{installment}/collect', [InstallmentController::class, 'collect'])->name('installments.collect');
     Route::delete('installments/{installment}/collect', [InstallmentController::class, 'uncollect'])->name('installments.uncollect');

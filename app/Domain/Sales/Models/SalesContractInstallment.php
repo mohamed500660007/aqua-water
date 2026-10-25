@@ -3,6 +3,7 @@
 namespace App\Domain\Sales\Models;
 
 use App\Domain\Users\Models\User;
+use App\Support\ArabicOrdinal;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,6 +54,14 @@ class SalesContractInstallment extends Model
     public function splits(): HasMany
     {
         return $this->hasMany(self::class, 'split_from_id');
+    }
+
+    /** «القسط الثالث»، أو «باقي القسط الثالث» لقسط تفرّع عن دفعة جزئية — يُحمَّل splitFrom مسبقًا لتجنّب استعلام لكل قسط */
+    public function label(): string
+    {
+        return $this->split_from_id && $this->splitFrom
+            ? 'باقي القسط '.ArabicOrdinal::of($this->splitFrom->number)
+            : 'القسط '.ArabicOrdinal::of($this->number);
     }
 
     public function isPaid(): bool

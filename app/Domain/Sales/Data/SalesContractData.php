@@ -33,6 +33,7 @@ final readonly class SalesContractData
         public ?string $collectionDate = null,
         public ContractKind $kind = ContractKind::Sale,
         public float $price = 0.0,
+        public float $interest = 0.0,
     ) {}
 
     public function isMaintenance(): bool
@@ -76,6 +77,8 @@ final readonly class SalesContractData
             collectionDate: $validated['collection_date'] ?? null,
             kind: $kind,
             price: $isMaintenance ? (float) ($validated['price'] ?? 0) : 0.0,
+            // الفائدة تخص التقسيط وحده؛ العقد النقدي لا فائدة عليه
+            interest: $isInstallment ? (float) ($validated['interest'] ?? 0) : 0.0,
         );
     }
 }

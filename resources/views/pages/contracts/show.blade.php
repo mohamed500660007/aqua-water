@@ -207,7 +207,11 @@
 
                 <x-ui.detail-row label="السعر الأصلي" :value="number_format((float) $contract->subtotal) . ' ج.م'" />
                 <x-ui.detail-row label="الخصم" :value="number_format((float) $contract->discount) . ' ج.م'" />
-                <x-ui.detail-row label="السعر بعد الخصم" :value="number_format((float) $contract->total) . ' ج.م'" />
+                <x-ui.detail-row label="السعر بعد الخصم" :value="number_format($contract->priceAfterDiscount()) . ' ج.م'" />
+                @if ($contract->isInstallment())
+                    <x-ui.detail-row label="الفائدة" :value="number_format((float) $contract->interest) . ' ج.م'" />
+                    <x-ui.detail-row label="الإجمالي بالفائدة" :value="number_format((float) $contract->total) . ' ج.م'" />
+                @endif
                 <x-ui.detail-row label="المدفوع" :value="number_format((float) $contract->paid) . ' ج.م'" />
 
                 <div class="flex items-center justify-between gap-3 pt-3 mt-2 border-t border-gray-100">

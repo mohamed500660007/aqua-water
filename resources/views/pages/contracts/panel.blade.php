@@ -171,8 +171,8 @@
                 <h3 class="flex items-center gap-2 text-[13px] font-bold text-gray-800 mb-3">
                     <x-icon class="w-4 h-4 text-gray-400" name="banknote" /> الحساب
                 </h3>
-                <div class="rounded-xl bg-gray-50 p-3 grid grid-cols-5 gap-2 text-center">
-                    @foreach ([['قبل الخصم', $contract->subtotal], ['الخصم', $contract->discount], ['الإجمالي', $contract->total], ['المدفوع', $contract->paid], ['المتبقي', $contract->remaining]] as [$label, $value])
+                <div @class(['rounded-xl bg-gray-50 p-3 grid gap-2 text-center', 'grid-cols-6' => $contract->isInstallment(), 'grid-cols-5' => ! $contract->isInstallment()])>
+                    @foreach ($contract->moneyBreakdown() as $label => $value)
                         <div>
                             <p class="text-[10px] font-bold text-gray-400">{{ $label }}</p>
                             <p @class(['text-[12.5px] font-black', 'text-red-600' => $loop->last && $value > 0, 'text-gray-800' => ! ($loop->last && $value > 0)])>{{ $money($value) }}</p>
@@ -245,6 +245,12 @@
                                     <td class="px-4 py-1.5 text-gray-500" colspan="3">الخصم</td>
                                     <td class="px-4 py-1.5 text-left text-gray-600">− {{ $money($contract->discount) }}</td>
                                 </tr>
+                                @if ($contract->isInstallment())
+                                    <tr>
+                                        <td class="px-4 py-1.5 text-gray-500" colspan="3">فائدة التقسيط</td>
+                                        <td class="px-4 py-1.5 text-left text-gray-600">+ {{ $money($contract->interest) }}</td>
+                                    </tr>
+                                @endif
                                 <tr class="border-t border-gray-200">
                                     <td class="px-4 py-2 font-black text-gray-800" colspan="3">الإجمالي</td>
                                     <td class="px-4 py-2 text-left font-black text-gray-800">{{ $money($contract->total) }}</td>

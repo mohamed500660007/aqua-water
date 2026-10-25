@@ -19,6 +19,7 @@
 @section('content')
     <x-ui.page-header icon="wallet" subtitle="متابعة وتحصيل أقساط عقود التقسيط" title="الأقساط">
         <x-slot:actions>
+            <x-ui.btn icon="printer" size="sm" variant="dark" document :href="route('installments.report', request()->only(['from', 'to']))">تقرير الأقساط</x-ui.btn>
             {{-- تُفتح في تبويب مستقل لأنها صفحة طباعة بلا هيكل التطبيق --}}
             <a class="inline-flex items-center justify-center font-bold whitespace-nowrap transition-all active:scale-95 brand-green hover:bg-[#c2f040] shadow-sm text-[11px] px-3 py-2 gap-1.5 rounded-lg"
                 href="{{ route('installments.print') }}" target="_blank" rel="noopener">

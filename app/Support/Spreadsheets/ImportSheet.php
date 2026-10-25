@@ -8,6 +8,7 @@ use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -180,6 +181,11 @@ class ImportSheet
     private function formatDataRows(Worksheet $sheet): void
     {
         $lastRow = $this->maxRows + 1;
+        $lastLetter = Coordinate::stringFromColumnIndex(count($this->columns));
+
+        // حدود متصلة لكل خلايا الجدول بدل خطوط الشبكة الباهتة المتقطعة
+        $sheet->getStyle("A1:{$lastLetter}{$lastRow}")->getBorders()->getAllBorders()
+            ->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB('BFC5CC');
 
         foreach ($this->columns as $index => $column) {
             $format = match ($column->format) {

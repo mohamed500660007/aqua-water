@@ -60,12 +60,13 @@ class PayrollService
             ->selectRaw('sales_contracts.sales_rep_id as user_id, SUM(sales_contract_items.quantity) as item_count')
             ->groupBy('sales_contracts.sales_rep_id')->get()->keyBy('user_id');
 
-        // قيمة المبيعات منفصلة عن عدد الأجهزة: الربط بالبنود يكرر إجمالي العقد مع كل بند
+        // قيمة المبيعات منفصلة عن عدد الأجهزة: الربط بالبنود يكرر إجمالي العقد مع كل بند.
+        // فائدة التقسيط عائد تمويل لا قيمة بيع، فتُستبعد
         $salesValue = SalesContract::query()
             ->ofKind(ContractKind::Sale)
             ->whereBetween('contract_date', [$from, $to])
             ->whereIn('sales_rep_id', $userIds)
-            ->selectRaw('sales_rep_id as user_id, SUM(total) as amount_total')
+            ->selectRaw('sales_rep_id as user_id, SUM(total - interest) as amount_total')
             ->groupBy('sales_rep_id')->get()->keyBy('user_id');
 
         // عمولة الصيانة: كل شمعة غيّرها الفني في الشهر بعمولتها المحفوظة وقت الصيانة

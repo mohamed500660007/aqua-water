@@ -7,6 +7,7 @@
     $issuedAt = now();
     $today = today();
     $presets = [
+        'اليوم' => [$today->copy(), $today->copy()],
         'هذا الشهر' => [$today->copy()->startOfMonth(), $today->copy()->endOfMonth()],
         'الشهر الماضي' => [$today->copy()->subMonthNoOverflow()->startOfMonth(), $today->copy()->subMonthNoOverflow()->endOfMonth()],
         'هذه السنة' => [$today->copy()->startOfYear(), $today->copy()->endOfYear()],

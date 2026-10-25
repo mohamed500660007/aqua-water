@@ -35,6 +35,9 @@
         'type' => old('type', $contract?->type?->value ?? 'cash'),
         'discount' => (float) old('discount', $contract?->discount ?? 0),
         'paid' => (float) old('paid', $contract?->paid ?? 0),
+        'interest' => (float) old('interest', $contract?->interest ?? 0),
+        // بعد تحصيل أي قسط تثبت الحسابات، فتُعرض للقراءة فقط
+        'locked' => (bool) $contract?->hasCollections(),
         'installmentsCount' => (int) old('installments_count', $contract?->installments_count ?? 6),
         'periodMonths' => (int) old('installment_period_months', $contract?->installment_period_months ?? 1),
         // العقد الجديد يدخل الخطة افتراضيًا؛ بعد خطأ تحقق تُحترم آخر قيمة اختارها المستخدم
@@ -362,12 +365,16 @@
                     </span>
                 </div>
 
+                <div class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 mb-2 text-[11.5px] font-semibold text-amber-700" x-cloak x-show="locked">
+                    بدأ تحصيل أقساط هذا العقد — الحسابات (البنود والخصم والفائدة والمدفوع والأقساط) ثابتة ولا يمكن تعديلها.
+                </div>
+
                 <div class="py-3 border-b border-gray-50">
                     <label class="block text-[12px] font-bold text-gray-600 mb-1.5">الخصم (ج.م)</label>
                     <input
-                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
+                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
                         min="0" name="discount" placeholder="0" step="0.01" type="number"
-                        x-model.number="discount" />
+                        x-bind:readonly="locked" x-model.number="discount" />
                     <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.discount"
                         x-text="errors.discount"></p>
                 </div>
@@ -375,21 +382,23 @@
                 <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
                     <span class="text-[12px] text-gray-400">السعر بعد الخصم</span>
                     <span class="text-[13px] font-bold text-gray-800">
-                        <span x-text="Number(total).toLocaleString('en')"></span>
+                        <span x-text="Number(priceAfterDiscount).toLocaleString('en')"></span>
                         <span class="text-[10px] text-gray-400">ج.م</span>
                     </span>
                 </div>
 
                 <div class="py-3 border-b border-gray-50">
-                    <label class="block text-[12px] font-bold text-gray-600 mb-1.5">المدفوع مقدمًا (ج.م)</label>
+                    <label class="block text-[12px] font-bold text-gray-600 mb-1.5"
+                        x-text="locked ? 'المدفوع حتى الآن (ج.م)' : (type === 'installment' ? 'المقدم (ج.م)' : 'المدفوع (ج.م)')"></label>
                     <input
-                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
-                        min="0" name="paid" placeholder="0" step="0.01" type="number" x-model.number="paid" />
+                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
+                        min="0" name="paid" placeholder="0" step="0.01" type="number"
+                        x-bind:readonly="locked" x-model.number="paid" x-on:input="syncInterestRate()" />
                     <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.paid"
                         x-text="errors.paid"></p>
                 </div>
 
-                <div class="flex items-center justify-between py-3">
+                <div class="flex items-center justify-between py-3" x-show="type !== 'installment'">
                     <span class="text-[12px] text-gray-400">المتبقي</span>
                     <span class="text-base font-bold text-gray-800">
                         <span x-text="Number(remaining).toLocaleString('en')"></span>
@@ -398,13 +407,59 @@
                 </div>
 
                 {{-- بيانات التقسيط --}}
-                <div class="space-y-3 pt-3 border-t border-gray-100" x-cloak x-show="type === 'installment'">
+                <div class="space-y-3 pt-1" x-cloak x-show="type === 'installment'">
+                    <div class="flex items-center justify-between py-2.5 border-b border-gray-50" x-show="!locked">
+                        <span class="text-[12px] text-gray-400">المتبقي بعد المقدم</span>
+                        <span class="text-[13px] font-bold text-gray-800">
+                            <span x-text="Number(financed).toLocaleString('en')"></span>
+                            <span class="text-[10px] text-gray-400">ج.م</span>
+                        </span>
+                    </div>
+
+                    {{-- الفائدة تُكتب مبلغًا أو نسبة من المتبقي بعد المقدم، والمبلغ وحده هو ما يُحفظ --}}
+                    <div class="pb-3 border-b border-gray-50">
+                        <label class="block text-[12px] font-bold text-gray-600 mb-1.5">الفائدة</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <div class="col-span-2 relative">
+                                <input
+                                    class="w-full h-11 pl-7 pr-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
+                                    aria-label="نسبة الفائدة" max="1000" min="0" placeholder="0" step="0.01" type="number"
+                                    x-bind:readonly="locked" x-model.number="interestRate" x-on:input="applyInterestRate()" />
+                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">%</span>
+                            </div>
+                            <div class="col-span-3 relative">
+                                <input
+                                    class="w-full h-11 pl-10 pr-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
+                                    aria-label="قيمة الفائدة" min="0" name="interest" placeholder="0" step="0.01" type="number"
+                                    x-bind:readonly="locked" x-model.number="interest" x-on:input="syncInterestRate()" />
+                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">ج.م</span>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1.5">تُضاف على المتبقي بعد المقدم وتُقسَّم على الأقساط.</p>
+                    </div>
+
+                    <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
+                        <span class="text-[12px] text-gray-400">إجمالي العقد بالفائدة</span>
+                        <span class="text-[13px] font-bold text-gray-800">
+                            <span x-text="Number(total).toLocaleString('en')"></span>
+                            <span class="text-[10px] text-gray-400">ج.م</span>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between py-2.5">
+                        <span class="text-[12px] font-bold text-gray-600">المتبقي للتقسيط</span>
+                        <span class="text-base font-bold text-gray-800">
+                            <span x-text="Number(remaining).toLocaleString('en')"></span>
+                            <span class="text-[10px] text-gray-400">ج.م</span>
+                        </span>
+                    </div>
+
                     <div>
                         <label class="block text-[12px] font-bold text-gray-600 mb-1.5">عدد الأقساط</label>
                         <input
                             class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 outline-none transition"
                             max="120" min="1" name="installments_count" type="number"
-                            x-model.number="installmentsCount" />
+                            x-bind:readonly="locked" x-model.number="installmentsCount" />
                     </div>
 
                     <div>
@@ -412,14 +467,14 @@
                         <input
                             class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 outline-none transition"
                             max="12" min="1" name="installment_period_months" type="number"
-                            x-model.number="periodMonths" />
+                            x-bind:readonly="locked" x-model.number="periodMonths" />
                     </div>
 
                     <div>
                         <label class="block text-[12px] font-bold text-gray-600 mb-1.5">تاريخ أول استحقاق</label>
                         <input
                             class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 outline-none transition"
-                            name="first_due_date" type="date" x-model="firstDueDate" />
+                            name="first_due_date" type="date" x-bind:readonly="locked" x-model="firstDueDate" />
                     </div>
 
                     {{-- المبلغ المستحق دوريًا --}}
@@ -482,12 +537,19 @@
                 contractDate: @js(old('contract_date', $contract?->contract_date?->format('Y-m-d') ?? today()->toDateString())),
                 discount: config.defaults.discount,
                 paid: config.defaults.paid,
+                interest: config.defaults.interest,
+                interestRate: 0,
+                locked: config.defaults.locked,
                 installmentsCount: config.defaults.installmentsCount,
                 periodMonths: config.defaults.periodMonths,
                 firstDueDate: @js(old('first_due_date', $contract?->first_due_date?->format('Y-m-d') ?? today()->addMonth()->toDateString())),
                 withPlan: config.defaults.withPlan,
                 kind: config.defaults.kind,
                 price: config.defaults.price,
+
+                init() {
+                    this.syncInterestRate();
+                },
 
                 product(row) {
                     return this.products.find(p => p.id === row.product_id) || null;
@@ -540,12 +602,34 @@
                     return round(this.items.reduce((sum, row) => sum + this.lineTotal(row), 0));
                 },
 
-                get total() {
+                get priceAfterDiscount() {
                     return round(Math.max(0, this.subtotal - (Number(this.discount) || 0)));
+                },
+
+                // الفائدة تخص التقسيط وحده — نفس قاعدة الخادم
+                get interestAmount() {
+                    return this.type === 'installment' ? round(Math.max(0, Number(this.interest) || 0)) : 0;
+                },
+
+                get total() {
+                    return round(this.priceAfterDiscount + this.interestAmount);
+                },
+
+                // المبلغ المموَّل بالتقسيط قبل الفائدة: السعر بعد الخصم ناقص المقدم
+                get financed() {
+                    return round(Math.max(0, this.priceAfterDiscount - (Number(this.paid) || 0)));
                 },
 
                 get remaining() {
                     return round(Math.max(0, this.total - (Number(this.paid) || 0)));
+                },
+
+                applyInterestRate() {
+                    this.interest = round(this.financed * (Number(this.interestRate) || 0) / 100);
+                },
+
+                syncInterestRate() {
+                    this.interestRate = this.financed > 0 ? round((Number(this.interest) || 0) * 100 / this.financed) : 0;
                 },
 
                 get installmentAmount() {
@@ -610,8 +694,11 @@
                         stockSource: ''
                     };
 
-                    if (!this.errors.paid && this.type === 'installment' && this.remaining <= 0) {
-                        this.errors.paid = 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد.';
+                    // العقد المثبَّت يتحقق منه الخادم: المدفوع فيه يشمل الأقساط المحصّلة
+                    if (this.locked) {
+                        this.errors.paid = '';
+                    } else if (!this.errors.paid && this.type === 'installment' && this.financed <= 0) {
+                        this.errors.paid = 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد بعد المقدم.';
                     }
 
                     if (isSale && this.stockSource === 'sales_rep' && !this.salesRepId) {

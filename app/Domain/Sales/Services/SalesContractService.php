@@ -16,6 +16,7 @@ use App\Domain\Sales\Models\SalesContractItem;
 use App\Domain\Sales\Models\SalesContractMaintenanceItem;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -62,8 +63,14 @@ class SalesContractService
             $previousPlanId = $contract->maintenance_plan_id;
             $previousStart = $this->maintenanceStart($contract);
             $pricing = $this->pricing->forContract($data);
+            $attributes = $this->attributes($data, $pricing['subtotal']);
 
-            $contract->update($this->attributes($data, $pricing['subtotal']));
+            // بعد بدء التحصيل تبقى الحسابات كما هي، وإلا اختلف المتبقي وقيمة القسط عن جدول الأقساط الثابت
+            if ($contract->hasCollections()) {
+                $attributes = Arr::except($attributes, SalesContract::FINANCIAL_COLUMNS);
+            }
+
+            $contract->update($attributes);
 
             $this->syncItems($contract, $pricing['lines']);
             $this->syncInstallments($contract);
@@ -174,7 +181,9 @@ class SalesContractService
     private function attributes(SalesContractData $data, float $subtotal): array
     {
         $discount = min($data->discount, $subtotal);
-        $total = round($subtotal - $discount, 2);
+        $interest = round(max(0.0, $data->interest), 2);
+        // الفائدة تُضاف على المتبقي بعد المقدم، فتدخل في الإجمالي والمتبقي وقيمة كل قسط
+        $total = round($subtotal - $discount + $interest, 2);
         $paid = min($data->paid, $total);
         $remaining = round($total - $paid, 2);
 
@@ -196,6 +205,7 @@ class SalesContractService
             'notes' => $data->notes,
             'subtotal' => $subtotal,
             'discount' => $discount,
+            'interest' => $interest,
             'total' => $total,
             'paid' => $paid,
             'remaining' => $remaining,
@@ -250,7 +260,7 @@ class SalesContractService
     private function syncInstallments(SalesContract $contract, bool $isNew = false): void
     {
         // لو بدأ التحصيل فعليًا، الجدول يبقى ثابتًا حتى لا يُفقد سجل الأقساط المدفوعة
-        if (! $isNew && $contract->installments()->whereNotNull('paid_at')->exists()) {
+        if (! $isNew && $contract->hasCollections()) {
             return;
         }
 

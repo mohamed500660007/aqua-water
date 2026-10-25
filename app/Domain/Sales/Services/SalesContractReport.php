@@ -32,6 +32,7 @@ class SalesContractReport
             ->selectRaw('COUNT(*) as contracts')
             ->selectRaw('COALESCE(SUM(subtotal), 0) as subtotal')
             ->selectRaw('COALESCE(SUM(discount), 0) as discount')
+            ->selectRaw('COALESCE(SUM(interest), 0) as interest')
             ->selectRaw('COALESCE(SUM(total), 0) as total')
             ->selectRaw('COALESCE(SUM(paid), 0) as paid')
             ->selectRaw('COALESCE(SUM(remaining), 0) as remaining')
@@ -46,6 +47,7 @@ class SalesContractReport
                 'contracts' => (int) $row->contracts,
                 'subtotal' => (float) $row->subtotal,
                 'discount' => (float) $row->discount,
+                'interest' => (float) $row->interest,
                 'total' => (float) $row->total,
                 'paid' => (float) $row->paid,
                 'remaining' => (float) $row->remaining,
@@ -56,7 +58,7 @@ class SalesContractReport
             ->sortBy(fn ($group) => [$group['kind']->value, $group['type']->value])
             ->values();
 
-        $totals = collect(['contracts', 'subtotal', 'discount', 'total', 'paid', 'remaining', 'legal', 'legal_remaining', 'settled'])
+        $totals = collect(['contracts', 'subtotal', 'discount', 'interest', 'total', 'paid', 'remaining', 'legal', 'legal_remaining', 'settled'])
             ->mapWithKeys(fn (string $key) => [$key => $groups->sum($key)])
             ->all();
 

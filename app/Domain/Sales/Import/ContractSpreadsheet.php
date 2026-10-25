@@ -32,16 +32,18 @@ class ContractSpreadsheet
     {
         $defaultWarehouse = $references->defaultWarehouseName();
 
+        // ترتيب الأعمدة يتبع جدول العقود الرئيسي: العميل ← تاريخ العقد ← نوع الجهاز ← القسط ← الفني
         return new ImportSheet('العقود', [
-            new SheetColumn('kind', 'نوع التعاقد', width: 14, note: 'بيع جهاز أو عقد صيانة — الفارغ = بيع جهاز.',
-                options: array_values(ContractKind::options())),
             new SheetColumn('customer', 'العميل (كود أو هاتف)', required: true, width: 20, format: SheetColumn::TEXT,
                 note: 'كود العميل مثل CUS-00012 أو رقم هاتفه المسجل — العميل لازم يكون مسجلًا في النظام.'),
             new SheetColumn('contract_date', 'تاريخ العقد', required: true, format: SheetColumn::DATE, note: 'مثال: 2025-03-15'),
-            new SheetColumn('type', 'طريقة الدفع', required: true, width: 13, options: array_values(ContractType::options())),
+            new SheetColumn('kind', 'نوع التعاقد', width: 14, note: 'بيع جهاز أو عقد صيانة — الفارغ = بيع جهاز.',
+                options: array_values(ContractKind::options())),
             ...$this->productColumns($references),
             new SheetColumn('price', 'سعر عقد الصيانة', width: 15, note: 'لعقود الصيانة فقط — عقد البيع يُحسب من المنتجات.'),
+            new SheetColumn('type', 'طريقة الدفع', required: true, width: 13, options: array_values(ContractType::options())),
             new SheetColumn('discount', 'الخصم', width: 12),
+            new SheetColumn('interest', 'الفائدة', width: 12, note: 'للتقسيط فقط — مبلغ الفائدة المضاف على المتبقي بعد المقدم.'),
             new SheetColumn('paid', 'المدفوع حتى الآن', width: 16,
                 note: 'كل ما دفعه العميل حتى اليوم (المقدم + الأقساط التي حُصّلت).'),
             new SheetColumn('installments_count', 'عدد الأقساط المتبقية', width: 17,
@@ -49,14 +51,14 @@ class ContractSpreadsheet
             new SheetColumn('installment_period_months', 'القسط كل كام شهر', width: 16, note: 'للتقسيط — الفارغ = كل شهر.'),
             new SheetColumn('first_due_date', 'تاريخ أول قسط متبقٍ', width: 18, format: SheetColumn::DATE,
                 note: 'للتقسيط — تاريخ استحقاق أول قسط لم يُدفع.'),
+            new SheetColumn('installer', 'فني التركيب', width: 20, options: $references->installerNames()),
+            new SheetColumn('sales_rep', 'مندوب المبيعات', width: 20, options: $references->salesRepNames()),
             new SheetColumn('installation_date', 'تاريخ التركيب', format: SheetColumn::DATE, note: 'الفارغ = تاريخ العقد.'),
             new SheetColumn('maintenance_date', 'تاريخ الصيانة', format: SheetColumn::DATE, note: 'الفارغ = تاريخ التركيب.'),
             new SheetColumn('collection_date', 'تاريخ التحصيل', format: SheetColumn::DATE, note: 'اختياري.'),
+            new SheetColumn('plan', 'خطة الصيانة', width: 20, options: $references->planNames()),
             new SheetColumn('warehouse', 'المخزن', options: $references->warehouseNames(),
                 note: $defaultWarehouse ? "الفارغ = {$defaultWarehouse}. العقد القديم لا يخصم من المخزون." : null),
-            new SheetColumn('sales_rep', 'مندوب المبيعات', width: 20, options: $references->salesRepNames()),
-            new SheetColumn('installer', 'فني التركيب', width: 20, options: $references->installerNames()),
-            new SheetColumn('plan', 'خطة الصيانة', width: 20, options: $references->planNames()),
             new SheetColumn('notes', 'ملاحظات', width: 34),
         ], self::MAX_ROWS, [
             'طريقة ملء شيت العقود القديمة',

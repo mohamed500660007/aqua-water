@@ -50,7 +50,7 @@
     <x-report.section class="avoid-break" no="1" title="الملخص العام">
         <x-report.figures :highlight="3" :items="[
             ['عدد العقود', number_format($totals['contracts']), 'عقد'],
-            ['إجمالي التعاقدات', $money($totals['total']), 'ج.م', 'بعد خصم ' . $money($totals['discount'])],
+            ['إجمالي التعاقدات', $money($totals['total']), 'ج.م', 'بعد خصم ' . $money($totals['discount']) . ' وفائدة ' . $money($totals['interest'])],
             ['المحصّل', $money($totals['paid']), 'ج.م', 'نسبة التحصيل ' . $share($totals['paid'], $totals['total'])],
             ['المتبقي للتحصيل', $money($totals['remaining']), 'ج.م'],
         ]" />
@@ -71,6 +71,7 @@
                     <th class="c">العقود</th>
                     <th class="l">قبل الخصم</th>
                     <th class="l">الخصم</th>
+                    <th class="l">الفائدة</th>
                     <th class="l">الإجمالي</th>
                     <th class="l">المحصّل</th>
                     <th class="l">المتبقي</th>
@@ -85,13 +86,14 @@
                         <td class="num c">{{ number_format($group['contracts']) }}</td>
                         <td class="num l">{{ $money($group['subtotal']) }}</td>
                         <td class="num l">{{ $money($group['discount']) }}</td>
+                        <td class="num l">{{ $money($group['interest']) }}</td>
                         <td class="num l font-bold">{{ $money($group['total']) }}</td>
                         <td class="num l">{{ $money($group['paid']) }}</td>
                         <td class="num l font-bold">{{ $money($group['remaining']) }}</td>
                         <td class="num c">{{ $share($group['total'], $totals['total']) }}</td>
                     </tr>
                 @empty
-                    <tr><td class="is-empty" colspan="9">لا توجد عقود في هذه الفترة</td></tr>
+                    <tr><td class="is-empty" colspan="10">لا توجد عقود في هذه الفترة</td></tr>
                 @endforelse
             </tbody>
             @if ($summary['groups']->isNotEmpty())
@@ -101,6 +103,7 @@
                         <td class="num c">{{ number_format($totals['contracts']) }}</td>
                         <td class="num l">{{ $money($totals['subtotal']) }}</td>
                         <td class="num l">{{ $money($totals['discount']) }}</td>
+                        <td class="num l">{{ $money($totals['interest']) }}</td>
                         <td class="num l">{{ $money($totals['total']) }}</td>
                         <td class="num l">{{ $money($totals['paid']) }}</td>
                         <td class="num l">{{ $money($totals['remaining']) }}</td>
