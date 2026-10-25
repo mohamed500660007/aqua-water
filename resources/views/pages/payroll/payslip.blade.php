@@ -26,8 +26,8 @@
 @section('content')
     <header class="flex items-start justify-between border-b-2 border-gray-800 pb-4 mb-6">
         <div>
-            <p class="text-2xl font-extrabold">أكوا ووتر</p>
-            <p class="text-[12px] text-gray-500">لأنظمة تنقية المياه</p>
+            <p class="text-2xl font-extrabold">{{ $settings->get('company_name') }}</p>
+            <p class="text-[12px] text-gray-500">{{ $settings->get('company_tagline') }}</p>
         </div>
         <div class="text-left">
             <p class="text-xl font-extrabold">قسيمة مرتب</p>

@@ -17,6 +17,8 @@
 @php
     $error = $error ?? ($name ? $errors->first($name) : null);
     $current = $name ? old($name, $value) : $value;
+    // القوائم (سطر لكل عنصر) تعود من الجلسة مصفوفة بعد خطأ تحقق
+    $current = is_array($current) ? implode(PHP_EOL, $current) : $current;
     $choices = $options ?? [];
     $choices = array_is_list($choices) ? array_combine($choices, $choices) : $choices;
 

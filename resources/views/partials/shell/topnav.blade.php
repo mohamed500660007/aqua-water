@@ -11,10 +11,10 @@
         <div class="tn-slot tn-slot-start" id="tnStart"></div>
 
         <div class="tn-bar" x-ref="bar">
-            <a class="tn-brand" href="{{ route('home') }}" title="أكوا ووتر" wire:navigate>
+            <a class="tn-brand" href="{{ route('home') }}" title="{{ $settings->get('company_name') }}" wire:navigate>
                 <span class="tn-logo"><x-icon class="w-5 h-5" name="droplets" /></span>
                 <span>
-                    <span class="tn-brand-name">أكوا ووتر</span>
+                    <span class="tn-brand-name">{{ $settings->get('company_name') }}</span>
                     <span class="tn-brand-sub">لوحة التحكم</span>
                 </span>
             </a>

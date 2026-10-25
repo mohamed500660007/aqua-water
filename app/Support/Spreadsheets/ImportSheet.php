@@ -2,6 +2,7 @@
 
 namespace App\Support\Spreadsheets;
 
+use App\Domain\Settings\Settings;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Reader\Xlsx as XlsxReader;
@@ -36,7 +37,7 @@ class ImportSheet
     public function template(): Spreadsheet
     {
         $spreadsheet = new Spreadsheet;
-        $spreadsheet->getProperties()->setTitle("قالب استيراد {$this->title}")->setCreator('أكوا ووتر');
+        $spreadsheet->getProperties()->setTitle("قالب استيراد {$this->title}")->setCreator($this->company());
 
         $sheet = $spreadsheet->getActiveSheet()->setTitle($this->title)->setRightToLeft(true);
         $this->writeHeader($sheet);
@@ -170,7 +171,7 @@ class ImportSheet
             ]);
 
             if ($column->note) {
-                $sheet->getComment("{$letter}1")->setAuthor('أكوا ووتر')->getText()->createText($column->note);
+                $sheet->getComment("{$letter}1")->setAuthor($this->company())->getText()->createText($column->note);
             }
         }
 
@@ -238,6 +239,11 @@ class ImportSheet
             $letter = Coordinate::stringFromColumnIndex($index + 1);
             $sheet->setDataValidation("{$letter}2:{$letter}".($this->maxRows + 1), $validation);
         }
+    }
+
+    private function company(): string
+    {
+        return app(Settings::class)->get('company_name');
     }
 
     private function writeInstructions(Worksheet $sheet): void

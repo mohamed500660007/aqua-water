@@ -5,7 +5,7 @@
 @php($id = 'aqLogo'.\Illuminate\Support\Str::random(6))
 
 <svg {{ $attributes->merge(['class' => 'brand-logo']) }} viewBox="0 0 96 96" width="{{ $size }}" height="{{ $size }}"
-    role="img" aria-label="شعار أكوا ووتر">
+    role="img" aria-label="شعار {{ $settings->get('company_name') }}">
     <defs>
         <linearGradient id="{{ $id }}Ring" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0" stop-color="#D4FF5B" />

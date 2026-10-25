@@ -38,8 +38,10 @@
         'interest' => (float) old('interest', $contract?->interest ?? 0),
         // بعد تحصيل أي قسط تثبت الحسابات، فتُعرض للقراءة فقط
         'locked' => (bool) $contract?->hasCollections(),
-        'installmentsCount' => (int) old('installments_count', $contract?->installments_count ?? 6),
-        'periodMonths' => (int) old('installment_period_months', $contract?->installment_period_months ?? 1),
+        'installmentsCount' => (int) old('installments_count', $contract?->installments_count ?? $settings->get('default_installments_count')),
+        'periodMonths' => (int) old('installment_period_months', $contract?->installment_period_months ?? $settings->get('default_installment_period')),
+        // العقد الجديد يبدأ بنسبة الفائدة الافتراضية، والمبلغ يتبعها حتى يُكتب مبلغ يدويًا
+        'interestRate' => $contract || session()->hasOldInput() ? null : (float) $settings->get('default_interest_rate'),
         // العقد الجديد يدخل الخطة افتراضيًا؛ بعد خطأ تحقق تُحترم آخر قيمة اختارها المستخدم
         'withPlan' => session()->hasOldInput()
             ? filled(old('maintenance_plan_id'))
@@ -393,7 +395,7 @@
                     <input
                         class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
                         min="0" name="paid" placeholder="0" step="0.01" type="number"
-                        x-bind:readonly="locked" x-model.number="paid" x-on:input="syncInterestRate()" />
+                        x-bind:readonly="locked" x-model.number="paid" x-on:input="followRate || syncInterestRate()" />
                     <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.paid"
                         x-text="errors.paid"></p>
                 </div>
@@ -424,14 +426,14 @@
                                 <input
                                     class="w-full h-11 pl-7 pr-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
                                     aria-label="نسبة الفائدة" max="1000" min="0" placeholder="0" step="0.01" type="number"
-                                    x-bind:readonly="locked" x-model.number="interestRate" x-on:input="applyInterestRate()" />
+                                    x-bind:readonly="locked" x-model.number="interestRate" x-on:input="followRate = true; applyInterestRate()" />
                                 <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">%</span>
                             </div>
                             <div class="col-span-3 relative">
                                 <input
                                     class="w-full h-11 pl-10 pr-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
                                     aria-label="قيمة الفائدة" min="0" name="interest" placeholder="0" step="0.01" type="number"
-                                    x-bind:readonly="locked" x-model.number="interest" x-on:input="syncInterestRate()" />
+                                    x-bind:readonly="locked" x-model.number="interest" x-on:input="followRate = false; syncInterestRate()" />
                                 <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">ج.م</span>
                             </div>
                         </div>
@@ -538,17 +540,25 @@
                 discount: config.defaults.discount,
                 paid: config.defaults.paid,
                 interest: config.defaults.interest,
-                interestRate: 0,
+                interestRate: config.defaults.interestRate || 0,
+                followRate: (config.defaults.interestRate || 0) > 0,
                 locked: config.defaults.locked,
                 installmentsCount: config.defaults.installmentsCount,
                 periodMonths: config.defaults.periodMonths,
-                firstDueDate: @js(old('first_due_date', $contract?->first_due_date?->format('Y-m-d') ?? today()->addMonth()->toDateString())),
+                firstDueDate: @js(old('first_due_date', $contract?->first_due_date?->format('Y-m-d') ?? today()->addMonthsNoOverflow((int) $settings->get('first_due_after_months'))->toDateString())),
                 withPlan: config.defaults.withPlan,
                 kind: config.defaults.kind,
                 price: config.defaults.price,
 
                 init() {
-                    this.syncInterestRate();
+                    if (this.followRate) {
+                        this.applyInterestRate();
+                    } else {
+                        this.syncInterestRate();
+                    }
+
+                    // ما دامت الفائدة تتبع النسبة يُعاد حسابها مع كل تغيير في السعر أو المقدم
+                    this.$watch('financed', () => this.followRate && this.applyInterestRate());
                 },
 
                 product(row) {

@@ -29,7 +29,7 @@
 
             <div class="m-sheet-title">
                 <div>
-                    <strong>أكوا ووتر</strong>
+                    <strong>{{ $settings->get('company_name') }}</strong>
                     <small>كل أقسام لوحة التحكم</small>
                 </div>
                 <button class="m-icon-btn" type="button" aria-label="إغلاق القائمة" x-on:click="$store.more.close()">

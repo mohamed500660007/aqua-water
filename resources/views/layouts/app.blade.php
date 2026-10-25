@@ -9,7 +9,7 @@
 
     <link href="{{ asset('favicon.svg') }}" rel="icon" type="image/svg+xml" />
 
-    <title>@yield('title', 'لوحة التحكم') — أكوا ووتر</title>
+    <title>@yield('title', 'لوحة التحكم') — {{ $settings->get('company_name') }}</title>
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

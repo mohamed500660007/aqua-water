@@ -22,7 +22,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <link href="{{ asset('favicon.svg') }}" rel="icon" type="image/svg+xml" />
-    <title>@yield('title') — أكوا ووتر</title>
+    <title>@yield('title') — {{ $settings->get('company_name') }}</title>
 
     {{-- يُجبر Livewire على تحميل كامل لو وُصل لهذه الصفحة بتنقّل SPA، حتى يعمل Tailwind --}}
     <script data-navigate-track="reload" src="https://cdn.tailwindcss.com"></script>
@@ -329,7 +329,7 @@
         /* ===== الخاتمة ===== */
         .rpt-signatures {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(var(--signatures, 3), 1fr);
             gap: 14px;
             margin-top: 26px;
         }
@@ -468,7 +468,7 @@
             margin: 10mm 10mm 14mm;
 
             @bottom-right {
-                content: "أكوا ووتر — @yield('title')";
+                content: "{{ $settings->get('company_name') }} — @yield('title')";
                 font-family: 'Tajawal', sans-serif;
                 font-size: 8.5px;
                 color: #555;
@@ -575,8 +575,11 @@
     <main class="sheet">
         <header class="rpt-header">
             <div>
-                <p class="rpt-company">أكوا ووتر</p>
-                <p class="rpt-tagline">لأنظمة تنقية المياه</p>
+                <p class="rpt-company">{{ $settings->get('company_name') }}</p>
+                <p class="rpt-tagline">{{ $settings->get('company_tagline') }}</p>
+                @if ($settings->get('company_phone') || $settings->get('company_address'))
+                    <p class="rpt-tagline">{{ collect([$settings->get('company_address'), $settings->get('company_phone')])->filter()->join(' — ') }}</p>
+                @endif
             </div>
 
             <div class="rpt-title-box">
@@ -610,8 +613,8 @@
 
         @yield('content')
 
-        <footer class="rpt-signatures avoid-break">
-            @foreach (['أعدّه', 'راجعه', 'اعتماد المدير'] as $role)
+        <footer class="rpt-signatures avoid-break" style="--signatures: {{ count($settings->list('report_signatures')) }}">
+            @foreach ($settings->list('report_signatures') as $role)
                 <div>
                     <p>{{ $role }}</p>
                     <p>الاسم: ............................................</p>
