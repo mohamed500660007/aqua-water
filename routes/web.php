@@ -1,5 +1,6 @@
 <?php
 
+use App\Domain\Settings\Settings;
 use App\Http\Controllers\Complaints\ComplaintController;
 use App\Http\Controllers\Customers\CustomerController;
 use App\Http\Controllers\Customers\CustomerImportController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Reports\ReportController;
 use App\Http\Controllers\Sales\ContractImportController;
 use App\Http\Controllers\Sales\InstallmentController;
 use App\Http\Controllers\Sales\SalesContractController;
+use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Users\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +40,13 @@ Route::prefix('dashboard')->group(function () {
         Route::get('maintenance', 'maintenance')->name('maintenance');
         Route::get('after-sales', 'afterSales')->name('after-sales');
     });
+
+    // ملف الإعدادات: قسم لكل مجموعة، يُحفظ ويُستعاد لقيمه الافتراضية مستقلًا
+    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::put('settings/{section}', [SettingsController::class, 'update'])->name('settings.update')
+        ->whereIn('section', array_keys(Settings::sections()));
+    Route::delete('settings/{section}', [SettingsController::class, 'reset'])->name('settings.reset')
+        ->whereIn('section', array_keys(Settings::sections()));
 
     // قبل الـ resource حتى لا يُفهم «report» كمعرّف عقد
     Route::get('contracts/report', [SalesContractController::class, 'report'])->name('contracts.report');

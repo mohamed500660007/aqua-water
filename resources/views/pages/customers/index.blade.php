@@ -2,7 +2,7 @@
 
 @section('title', 'العملاء')
 @section('page-title', 'العملاء')
-@section('page-subtitle', 'إدارة قاعدة عملاء أكوا ووتر')
+@section('page-subtitle', 'إدارة قاعدة عملاء ' . $settings->get('company_name'))
 
 @php
     $hasFilters = collect(request()->only(['q', 'status', 'origin', 'governorate', 'center', 'village']))->filter()->isNotEmpty();

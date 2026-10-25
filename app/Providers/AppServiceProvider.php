@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Domain\Settings\Settings;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +13,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // نسخة واحدة لكل request: القيم المحفوظة تُقرأ باستعلام واحد مهما تكرر استخدامها
+        $this->app->singleton(Settings::class);
     }
 
     /**
@@ -19,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // $settings متاح في كل الواجهات (اسم الشركة، نصوص الطباعة...) — لا يستعلم إلا عند أول استخدام
+        View::share('settings', $this->app->make(Settings::class));
     }
 }

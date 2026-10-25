@@ -2,7 +2,7 @@
 
 @section('title', 'الرئيسية')
 @section('page-title', 'الرئيسية')
-@section('page-subtitle', 'مرحبًا بك في لوحة تحكم أكوا ووتر')
+@section('page-subtitle', 'مرحبًا بك في لوحة تحكم ' . $settings->get('company_name'))
 
 @php
     $quickActions = [
@@ -321,9 +321,9 @@
                         <span x-text="`${greeting} · ${today}`">أهلًا بك</span>
                     </span>
 
-                    <h2 class="home-title mt-3" id="homeTitle">مرحبًا بكِ يا أستاذة <em>هبة</em></h2>
+                    <h2 class="home-title mt-3" id="homeTitle">مرحبًا بكِ يا أستاذة <em>{{ $settings->get('manager_name') }}</em></h2>
                     <p class="mt-2 max-w-xl text-[14px] leading-7 text-white/60">
-                        كل أعمال أكوا ووتر في مكان واحد: البيع والتحصيل، والمخزون والعهد، والصيانة وفريق العمل.
+                        كل أعمال {{ $settings->get('company_name') }} في مكان واحد: البيع والتحصيل، والمخزون والعهد، والصيانة وفريق العمل.
                         اختاري القسم اللي محتاجاه وابدئي.
                     </p>
                 </div>
@@ -380,7 +380,7 @@
 
     <p class="home-reveal mt-10 mb-2 flex items-center justify-center gap-2 text-[12px] text-gray-400" style="--delay: {{ .3 + $tileIndex * .05 }}s">
         <x-icon class="w-3.5 h-3.5" name="droplets" />
-        لوحة تحكم أكوا ووتر
+        لوحة تحكم {{ $settings->get('company_name') }}
     </p>
 @endsection
 

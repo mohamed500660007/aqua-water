@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <link href="{{ asset('favicon.svg') }}" rel="icon" type="image/svg+xml" />
-    <title>@yield('title') — أكوا ووتر</title>
+    <title>@yield('title') — {{ $settings->get('company_name') }}</title>
 
     {{-- data-navigate-track: لو وصل المستخدم لهذه الصفحة بتنقّل Livewire (wire:navigate) من اللوحة،
          يُجبر Livewire على تحميل كامل — وإلا لا يُعاد تشغيل Tailwind فيظهر الإيصال بلا تنسيق. --}}

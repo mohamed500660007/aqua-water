@@ -2,8 +2,11 @@
 
 namespace App\Support;
 
+use App\Domain\Settings\Settings;
+
 /**
- * قوائم ثابتة تخص إعدادات النظام فقط (تنقّل + قوائم اختيار) — لا تحتوي أي بيانات عرض.
+ * عناصر التنقل وقوائم الاختيار. القوائم القابلة للتعديل (المحافظات، الأقسام...) تُقرأ من الإعدادات،
+ * والأدوار ثابتة لأن صلاحيات العقود والعهد والصيانة مرتبطة بأسمائها.
  */
 class Lookups
 {
@@ -45,6 +48,7 @@ class Lookups
                 'action' => ['route' => 'reports.executive', 'label' => 'الملخص التنفيذي', 'icon' => 'gauge'],
                 'items' => [
                     ['route' => 'reports.index', 'icon' => 'clipboard-list', 'label' => 'ملف التقارير', 'tone' => 'purple', 'hint' => 'كل تقارير الشركة في مكان واحد'],
+                    ['route' => 'settings.index', 'icon' => 'settings', 'label' => 'الإعدادات', 'tone' => 'gray', 'hint' => 'بيانات الشركة والطباعة والقوائم'],
                 ],
             ],
             [
@@ -144,24 +148,24 @@ class Lookups
 
     public static function religions(): array
     {
-        return ['مسلم', 'مسيحي'];
+        return app(Settings::class)->list('religions');
     }
 
     /** مقترحات لخانة المؤهل الدراسي (يمكن كتابة غيرها) */
     public static function qualifications(): array
     {
-        return ['بدون مؤهل', 'إعدادية', 'دبلوم صنايع', 'دبلوم تجارة', 'دبلوم زراعة', 'ثانوية عامة', 'معهد فوق متوسط', 'بكالوريوس', 'ليسانس', 'دراسات عليا'];
+        return app(Settings::class)->list('qualifications');
     }
 
     /** مقترحات لصلة القرابة لجهة اتصال الطوارئ */
     public static function relations(): array
     {
-        return ['الأب', 'الأم', 'الزوج', 'الزوجة', 'الأخ', 'الأخت', 'الابن', 'الابنة', 'قريب', 'صديق'];
+        return app(Settings::class)->list('relations');
     }
 
     public static function governorates(): array
     {
-        return ['القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الغربية', 'الشرقية', 'أسيوط', 'بورسعيد', 'القليوبية'];
+        return app(Settings::class)->list('governorates');
     }
 
     public static function roles(): array
@@ -171,11 +175,11 @@ class Lookups
 
     public static function departments(): array
     {
-        return ['الإدارة', 'السكرتارية', 'المبيعات', 'الفنيين', 'الحسابات', 'المحصّلين', 'الجودة', 'الأرشيف'];
+        return app(Settings::class)->list('departments');
     }
 
     public static function branches(): array
     {
-        return ['القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية'];
+        return app(Settings::class)->list('branches');
     }
 }

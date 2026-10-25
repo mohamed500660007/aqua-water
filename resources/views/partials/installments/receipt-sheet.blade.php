@@ -14,7 +14,7 @@
     $collector = $installment->collectedBy?->name;
     $installmentNo = \App\Support\ArabicOrdinal::of($installment->number);
     $collectionDay = $installment->due_date->day;
-    $companyPhone = config('app.company_phone');
+    $companyPhone = $settings->get('company_phone');
     $blank = '';
 @endphp
 
@@ -23,8 +23,8 @@
     <div class="rc-main">
         <header class="rc-header">
             <div>
-                <p class="rc-company">أكوا ووتر</p>
-                <p class="rc-tagline">لأنظمة تنقية المياه</p>
+                <p class="rc-company">{{ $settings->get('company_name') }}</p>
+                <p class="rc-tagline">{{ $settings->get('company_tagline') }}</p>
                 <p class="rc-tagline">تليفون الشركة: <span class="num" dir="ltr">{{ $companyPhone }}</span></p>
             </div>
 
@@ -97,12 +97,12 @@
         </div>
 
         <p class="rc-footnote">
-            <span>هذا الإيصال لا يُعتد به إلا بعد التوقيع والختم — يُرجى الاحتفاظ به لحين انتهاء الأقساط.</span>
+            <span>{{ $settings->get('receipt_footnote') }}</span>
             <span>نسخة العميل</span>
         </p>
 
-        {{-- شرط ثابت على كل الإيصالات بلا استثناء — لا يُعدَّل من النظام --}}
-        <p class="rc-terms">في حالة تأخير القسط للشهر التالي تُضاف 50 جنيه — في حالة التأخير ليوم آخر إضافة 10 جنيه</p>
+        {{-- شرط واحد على كل الإيصالات بلا استثناء — يُعدَّل من الإعدادات فقط، لا لكل إيصال --}}
+        <p class="rc-terms">{{ $settings->get('receipt_terms') }}</p>
     </div>
 
     {{-- ===== خط القص ===== --}}
