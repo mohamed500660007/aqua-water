@@ -8,6 +8,17 @@ if [ -n "${RENDER_EXTERNAL_HOSTNAME:-}" ] && [ -z "${APP_URL:-}" ]; then
     export APP_URL="https://${RENDER_EXTERNAL_HOSTNAME}"
 fi
 
+# Some container platforms expose the attached database as DATABASE_URL,
+# while Laravel's default connection configuration reads DB_URL.
+if [ -n "${DATABASE_URL:-}" ] && [ -z "${DB_URL:-}" ]; then
+    export DB_URL="${DATABASE_URL}"
+fi
+
+case "${DB_URL:-}" in
+    postgres://*|postgresql://*) export DB_CONNECTION="${DB_CONNECTION:-pgsql}" ;;
+    mysql://*|mariadb://*) export DB_CONNECTION="${DB_CONNECTION:-mysql}" ;;
+esac
+
 php artisan migrate --force --no-interaction
 
 # Migrations run as root during container startup, while PHP-FPM handles
