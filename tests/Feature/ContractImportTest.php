@@ -92,7 +92,7 @@ class ContractImportTest extends TestCase
 
         $response = $this->get(route('contracts.import.template'))->assertOk();
         $path = tempnam(sys_get_temp_dir(), 'tpl').'.xlsx';
-        file_put_contents($path, $response->streamedContent());
+        file_put_contents($path, $response->getContent());
         $spreadsheet = IOFactory::load($path);
 
         $sheet = $spreadsheet->getSheet(0);

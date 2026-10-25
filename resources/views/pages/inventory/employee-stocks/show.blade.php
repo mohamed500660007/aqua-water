@@ -58,7 +58,7 @@
                             </p>
                             <p class="text-[12px] text-gray-600 mt-1">{{ $settlement->reason }}</p>
                             <p class="text-[11px] text-gray-400 mt-0.5">
-                                {{ $settlement->items->map(fn ($item) => ($item->product?->name ?? 'منتج محذوف') . ' × ' . $item->quantity)->join('، ') }}
+                                {{ $settlement->items->map(fn ($item) => ($item->product?->name ?? 'منتج محذوف') . ' (' . $item->signedDifference() . ')')->join('، ') }}
                             </p>
                         </div>
                         <span class="shrink-0 text-[11.5px] font-semibold text-gray-500" dir="ltr">{{ $settlement->settlement_date->format('Y-m-d') }}</span>

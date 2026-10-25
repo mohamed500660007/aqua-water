@@ -11,7 +11,7 @@ use App\Http\Responses\XlsxDownload;
 use App\Support\Spreadsheets\SpreadsheetImportException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Response;
 
 class ContractImportController extends Controller
 {
@@ -39,7 +39,7 @@ class ContractImportController extends Controller
     }
 
     /** القالب يُبنى بالقوائم الحالية (منتجات/موظفون/مخازن/خطط) وقت التحميل */
-    public function template(ContractSpreadsheet $spreadsheet): StreamedResponse
+    public function template(ContractSpreadsheet $spreadsheet): Response
     {
         return XlsxDownload::make($spreadsheet->template(new ContractReferences), 'aqua-water-contracts-template.xlsx');
     }

@@ -86,6 +86,27 @@ class EmployeeStockService
         return $this->applyDelta($userId, $productId, $quantity, StockMovementType::In, $date, $note, $reference);
     }
 
+    /**
+     * يضبط رصيد الموظف من منتج على الكمية المجرودة فعليًا تحت قفل الصف، بحركة واحدة بمقدار الفرق
+     * (بلا حركة لو لا فرق).
+     *
+     * @return array{0: int, 1: int} [الرصيد قبل، الرصيد بعد]
+     */
+    public function settleTo(int $userId, int $productId, int $counted, string $date, ?string $note, Model $reference): array
+    {
+        return DB::transaction(function () use ($userId, $productId, $counted, $date, $note, $reference) {
+            $before = $this->lockBalance($userId, $productId)->quantity;
+            $difference = $counted - $before;
+
+            if ($difference !== 0) {
+                $type = $difference > 0 ? StockMovementType::In : StockMovementType::Out;
+                $this->applyDelta($userId, $productId, abs($difference), $type, $date, $note, $reference);
+            }
+
+            return [$before, $counted];
+        });
+    }
+
     public function available(int $userId, int $productId): int
     {
         return (int) EmployeeStock::query()
