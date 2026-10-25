@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: aqua-water-demo
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: develop
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    initialDeployHook: php artisan db:seed --force --no-interaction && php artisan db:seed --class=DemoDataSeeder --force --no-interaction
+    envVars:
+      - key: APP_NAME
+        value: Aqua Water
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false
+      - key: APP_LOCALE
+        value: ar
+      - key: APP_FALLBACK_LOCALE
+        value: en
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        fromDatabase:
+          name: aqua-water-demo-db
+          property: connectionString
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+
+databases:
+  - name: aqua-water-demo-db
+    plan: free
+    region: frankfurt
+    databaseName: aqua_water
+    user: aqua_water
+    ipAllowList: []

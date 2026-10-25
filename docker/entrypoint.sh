@@ -1,0 +1,43 @@
+#!/bin/sh
+set -e
+
+: "${PORT:=8080}"
+sed "s|\${PORT}|${PORT}|g" /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+
+if [ -n "${RENDER_EXTERNAL_HOSTNAME:-}" ] && [ -z "${APP_URL:-}" ]; then
+    export APP_URL="https://${RENDER_EXTERNAL_HOSTNAME}"
+fi
+
+# Some container platforms expose the attached database as DATABASE_URL,
+# while Laravel's default connection configuration reads DB_URL.
+if [ -n "${DATABASE_URL:-}" ] && [ -z "${DB_URL:-}" ]; then
+    export DB_URL="${DATABASE_URL}"
+fi
+
+case "${DB_URL:-}" in
+    postgres://*|postgresql://*) export DB_CONNECTION="${DB_CONNECTION:-pgsql}" ;;
+    mysql://*|mariadb://*) export DB_CONNECTION="${DB_CONNECTION:-mysql}" ;;
+esac
+
+php artisan migrate --force --no-interaction
+
+# Migrations run as root during container startup, while PHP-FPM handles
+# requests as www-data. Keep SQLite and its directory writable by the app.
+chown -R www-data:www-data database
+
+# Opt-in one-shot seeding for a fresh environment; unset the variable afterwards.
+if [ "${RUN_SEEDERS}" = "true" ]; then
+    php artisan db:seed --force --no-interaction
+fi
+
+# Opt-in integrated demo data. The seeder is idempotent and this flag should
+# be disabled immediately after the deployment that creates the demo records.
+if [ "${RUN_DEMO_SEEDER}" = "true" ]; then
+    php artisan db:seed --class=DemoDataSeeder --force --no-interaction
+fi
+
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+exec supervisord -c /etc/supervisord.conf

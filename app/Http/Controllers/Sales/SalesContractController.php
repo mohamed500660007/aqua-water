@@ -4,17 +4,20 @@ namespace App\Http\Controllers\Sales;
 
 use App\Domain\Customers\Models\Customer;
 use App\Domain\Inventory\Exceptions\InsufficientStockException;
-use App\Domain\Inventory\Models\EmployeeStock;
-use App\Domain\Inventory\Models\StockBalance;
 use App\Domain\Inventory\Models\Warehouse;
+use App\Domain\Inventory\Services\EmployeeStockService;
+use App\Domain\Inventory\Services\StockService;
 use App\Domain\Maintenance\Models\MaintenancePlan;
 use App\Domain\Products\Models\Product;
+use App\Domain\Sales\Enums\ContractKind;
 use App\Domain\Sales\Enums\ContractType;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Sales\Models\SalesContract;
+use App\Domain\Sales\Services\SalesContractReport;
 use App\Domain\Sales\Services\SalesContractService;
 use App\Domain\Users\Models\User;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Sales\SalesContractReportRequest;
 use App\Http\Requests\Sales\SalesContractRequest;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -24,30 +27,70 @@ class SalesContractController extends Controller
 {
     private const PER_PAGE = 12;
 
-    public function __construct(private readonly SalesContractService $contracts) {}
+    public function __construct(
+        private readonly SalesContractService $contracts,
+        private readonly StockService $stock,
+        private readonly EmployeeStockService $employeeStock,
+    ) {}
 
     public function index(Request $request): View
     {
         $contracts = SalesContract::query()
-            ->with(['customer:id,name,code'])
-            ->withCount('items')
+            ->with([
+                'customer:id,name,code,center',
+                'installer:id,name',
+                'items:id,sales_contract_id,product_name',
+            ])
             ->search($request->input('q'))
-            ->applyFilters($request->only(['type', 'customer_id', 'from', 'to']))
+            ->applyFilters($request->only(['kind', 'type', 'customer_id', 'legal', 'from', 'to']))
             ->applySort($request->input('sort'), $request->input('dir'))
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         return view('pages.contracts.index', [
             'contracts' => $contracts,
-            'stats' => $this->stats(),
             'types' => ContractType::options(),
+            'kinds' => ContractKind::options(),
             'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
         ]);
     }
 
-    public function create(): View
+    public function report(SalesContractReportRequest $request, SalesContractReport $report): View
     {
-        return view('pages.contracts.create', $this->formOptions());
+        $content = $request->content();
+        $contracts = SalesContract::query()
+            ->search($request->validated('q'))
+            ->applyFilters($request->filters());
+
+        // الأجزاء غير المطلوبة للطباعة لا تُحسب أصلًا
+        $withSummary = $content !== 'list';
+        $rows = $content !== 'summary'
+            ? $report->rows((clone $contracts)->applySort($request->validated('sort'), $request->validated('dir')))
+            : collect();
+
+        return view('pages.contracts.report', [
+            'period' => $request->period(),
+            'content' => $content,
+            'summary' => $report->summary($contracts),
+            'salesRepsReport' => $withSummary ? $report->bySalesRep($contracts) : collect(),
+            'products' => $withSummary ? $report->products($contracts) : collect(),
+            'rows' => $rows->take(SalesContractReport::MAX_ROWS),
+            'truncated' => $rows->count() > SalesContractReport::MAX_ROWS,
+            'search' => $request->validated('q'),
+            'filters' => $request->filters(),
+            'listQuery' => $request->listQuery(),
+            'contents' => SalesContractReportRequest::CONTENTS,
+            'sorts' => SalesContractReportRequest::SORTS,
+            'kinds' => ContractKind::options(),
+            'types' => ContractType::options(),
+        ] + $this->peopleOptions());
+    }
+
+    public function create(Request $request): View
+    {
+        $kind = ContractKind::tryFrom((string) $request->query('kind')) ?? ContractKind::Sale;
+
+        return view('pages.contracts.create', ['defaultKind' => $kind->value] + $this->formOptions());
     }
 
     public function store(SalesContractRequest $request): RedirectResponse
@@ -79,6 +122,12 @@ class SalesContractController extends Controller
         ]);
     }
 
+    /** لوحة معاينة جانبية للعقد — تُطلب عند الفتح فقط حتى لا تُحمَّل مع كل صف في القائمة */
+    public function panel(SalesContract $contract): View
+    {
+        return view('pages.contracts.panel', ['contract' => $contract->loadDetails()]);
+    }
+
     public function edit(SalesContract $contract): View
     {
         return view('pages.contracts.edit', [
@@ -99,80 +148,47 @@ class SalesContractController extends Controller
             ->with('success', 'تم حفظ تعديلات العقد بنجاح.');
     }
 
-    public function destroy(SalesContract $contract): RedirectResponse
+    public function referToLegal(Request $request, SalesContract $contract): RedirectResponse
     {
-        $this->contracts->delete($contract);
+        $validated = $request->validate(['referred_at' => ['nullable', 'date', 'before_or_equal:today']]);
 
-        return redirect()
-            ->route('contracts.index')
-            ->with('success', "تم حذف العقد {$contract->code} وإعادة كمياته إلى المخزن.");
+        if ((float) $contract->remaining <= 0) {
+            return back()->with('error', 'لا يمكن تحويل عقد مسدَّد بالكامل للشؤون القانونية.');
+        }
+
+        $this->contracts->referToLegal($contract, $validated['referred_at'] ?? today()->toDateString());
+
+        return back()->with('success', "تم تحويل العقد {$contract->code} للشؤون القانونية.");
     }
 
-    /** ملخص العقود في استعلام تجميعي واحد */
-    private function stats(): array
+    public function withdrawFromLegal(SalesContract $contract): RedirectResponse
     {
-        $summary = SalesContract::query()
-            ->selectRaw('COUNT(*) as contracts')
-            ->selectRaw('COALESCE(SUM(total), 0) as total')
-            ->selectRaw('COALESCE(SUM(remaining), 0) as remaining')
-            ->selectRaw('SUM(CASE WHEN type = ? THEN 1 ELSE 0 END) as installments', [ContractType::Installment->value])
-            ->first();
+        $this->contracts->withdrawFromLegal($contract);
 
-        return [
-            'contracts' => (int) ($summary->contracts ?? 0),
-            'total' => (float) ($summary->total ?? 0),
-            'remaining' => (float) ($summary->remaining ?? 0),
-            'installments' => (int) ($summary->installments ?? 0),
-        ];
+        return back()->with('success', "تم إلغاء تحويل العقد {$contract->code} من الشؤون القانونية.");
     }
 
     private function formOptions(): array
     {
-        $plans = MaintenancePlan::query()
-            ->with(['items:id,maintenance_plan_id,product_id,interval_months,replacement_date', 'items.product:id,name'])
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        return [
-            'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
-            'salesReps' => User::query()->where('role', 'مندوب مبيعات')->orderBy('name')->pluck('name', 'id')->all(),
-            'installers' => User::query()->where('role', 'فني تركيب')->orderBy('name')->pluck('name', 'id')->all(),
+        return $this->peopleOptions() + [
             'warehouses' => Warehouse::options(),
             'types' => ContractType::options(),
+            'kinds' => ContractKind::options(),
             'stockSources' => StockSource::options(),
             'products' => Product::query()->orderBy('name')->get(['id', 'sku', 'name', 'price']),
-            'plans' => $plans,
-            'availability' => $this->availabilityMatrix(),
-            'employeeAvailability' => $this->employeeAvailabilityMatrix(),
+            'plan' => MaintenancePlan::current(),
+            'availability' => $this->stock->availabilityMatrix(),
+            'employeeAvailability' => $this->employeeStock->availabilityMatrix(),
         ];
     }
 
-    /**
-     * أرصدة كل مخزن/منتج لعرض المتاح فور اختيار المنتج داخل النموذج.
-     *
-     * @return array<int, array<int, int>>
-     */
-    private function availabilityMatrix(): array
+    /** قوائم العملاء والمندوبين والفنيين — مشتركة بين نموذج العقد وفلاتر التقرير */
+    private function peopleOptions(): array
     {
-        return StockBalance::query()
-            ->get(['warehouse_id', 'product_id', 'quantity'])
-            ->groupBy('warehouse_id')
-            ->map(fn ($balances) => $balances->pluck('quantity', 'product_id')->all())
-            ->all();
-    }
-
-    /**
-     * ما يحمله كل موظف من منتجات — لعرض المتاح فورًا عند اختيار مصدر البضاعة من مندوب أو فني.
-     *
-     * @return array<int, array<int, int>>
-     */
-    private function employeeAvailabilityMatrix(): array
-    {
-        return EmployeeStock::query()
-            ->get(['user_id', 'product_id', 'quantity'])
-            ->groupBy('user_id')
-            ->map(fn ($balances) => $balances->pluck('quantity', 'product_id')->all())
-            ->all();
+        return [
+            'customers' => Customer::query()->orderBy('name')->pluck('name', 'id')->all(),
+            'salesReps' => User::query()->whereIn('role', ['مندوب مبيعات', 'مندوبة', 'سكرتارية'])->orderBy('name')->pluck('name', 'id')->all(),
+            'installers' => User::query()->where('role', 'فني تركيب')->orderBy('name')->pluck('name', 'id')->all(),
+        ];
     }
 }

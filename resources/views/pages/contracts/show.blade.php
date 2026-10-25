@@ -2,7 +2,7 @@
 
 @section('title', $contract->code)
 @section('page-title', $contract->code)
-@section('page-subtitle', 'تفاصيل عقد البيع')
+@section('page-subtitle', 'تفاصيل ' . $contract->kind->label())
 
 @section('content')
     <x-ui.page-header icon="file-text" :subtitle="$contract->customer?->name" :title="'عقد ' . $contract->code">
@@ -10,17 +10,31 @@
             <x-ui.btn icon="arrow-right" size="sm" variant="soft" :href="route('contracts.index')">رجوع للقائمة</x-ui.btn>
             <x-ui.btn icon="pencil" size="sm" :href="route('contracts.edit', $contract)">تعديل العقد</x-ui.btn>
 
-            <form action="{{ route('contracts.destroy', $contract) }}" method="POST" x-data>
-                @csrf
-                @method('DELETE')
-                <x-ui.btn icon="trash-2" size="sm" variant="danger"
-                    x-on:click="$store.confirm.ask({
-                        title: 'حذف العقد',
-                        message: {{ Js::from('سيتم حذف العقد ' . $contract->code . ' وإعادة كمياته إلى المخزن.') }},
-                        label: 'حذف',
-                        onOk: () => $root.requestSubmit()
-                    })">حذف</x-ui.btn>
-            </form>
+            @if ($contract->isReferredToLegal())
+                <form action="{{ route('contracts.legal.destroy', $contract) }}" method="POST" x-data>
+                    @csrf
+                    @method('DELETE')
+                    <x-ui.btn icon="undo-2" size="sm" variant="soft"
+                        x-on:click="$store.confirm.ask({
+                            title: 'إلغاء التحويل للشؤون القانونية',
+                            message: 'سيعود العقد إلى المتأخرات العادية.',
+                            label: 'إلغاء التحويل',
+                            onOk: () => $root.requestSubmit()
+                        })">إلغاء التحويل القانوني</x-ui.btn>
+                </form>
+            @elseif ((float) $contract->remaining > 0)
+                <form action="{{ route('contracts.legal.store', $contract) }}" method="POST" x-data>
+                    @csrf
+                    <x-ui.btn icon="scale" size="sm" variant="dark"
+                        x-on:click="$store.confirm.ask({
+                            title: 'تحويل للشؤون القانونية',
+                            message: {{ Js::from('سيُنقل العقد ' . $contract->code . ' من المتأخرات العادية إلى تقرير الشؤون القانونية بتاريخ اليوم.') }},
+                            label: 'تحويل',
+                            onOk: () => $root.requestSubmit()
+                        })">تحويل للقانونية</x-ui.btn>
+                </form>
+            @endif
+
         </x-slot:actions>
     </x-ui.page-header>
 
@@ -33,16 +47,35 @@
                         <x-ui.avatar :name="$contract->customer?->name ?? ''" size="w-12 h-12" />
                         <div class="min-w-0">
                             <a class="text-sm font-bold text-gray-800 truncate block"
-                                href="{{ route('customers.show', $contract->customer_id) }}">
+                                href="{{ route('customers.show', $contract->customer_id) }}" wire:navigate>
                                 {{ $contract->customer?->name }}</a>
                             <p class="text-[12px] text-gray-400" dir="ltr">{{ $contract->customer?->code }}</p>
                         </div>
                     </div>
-                    <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
+                    <div class="flex flex-wrap items-center justify-end gap-1">
+                        <x-ui.badge :tone="$contract->kind->tone()">{{ $contract->kind->label() }}</x-ui.badge>
+                        <x-ui.badge :tone="$contract->type->tone()" dot>{{ $contract->type->label() }}</x-ui.badge>
+                        @unless ($contract->stock_tracked)
+                            <x-ui.badge tone="gray" title="عقد قديم مستورد من إكسيل — لا يخصم ولا يرد أي كمية من المخزون">عقد قديم مستورد</x-ui.badge>
+                        @endunless
+                    </div>
                 </div>
+
+                @if ($contract->isReferredToLegal())
+                    <div class="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 flex items-center gap-2.5">
+                        <x-icon class="w-4 h-4 text-red-500" name="scale" />
+                        <p class="text-[12px] font-bold text-red-600">
+                            محوّل للشؤون القانونية منذ
+                            <span dir="ltr">{{ $contract->legal_referred_at->format('Y-m-d') }}</span>
+                        </p>
+                    </div>
+                @endif
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                     <x-ui.detail-row label="تاريخ العقد" :value="$contract->contract_date->format('Y-m-d')" />
+                    <x-ui.detail-row label="تاريخ التركيب" :value="$contract->installation_date?->format('Y-m-d') ?? '—'" />
+                    <x-ui.detail-row label="تاريخ الصيانة" :value="$contract->maintenance_date?->format('Y-m-d') ?? '—'" />
+                    <x-ui.detail-row label="تاريخ التحصيل" :value="$contract->collection_date?->format('Y-m-d') ?? '—'" />
                     <x-ui.detail-row label="المخزن" :value="$contract->warehouse?->name ?? '—'" />
                     <x-ui.detail-row label="مندوب المبيعات" :value="$contract->salesRep?->name ?? 'غير مُعيَّن'" />
                     <x-ui.detail-row label="فني التركيب" :value="$contract->installer?->name ?? 'غير مُعيَّن'" />
@@ -60,6 +93,7 @@
             </div>
 
             {{-- بنود العقد --}}
+            @unless ($contract->isMaintenance())
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div class="flex items-center justify-between gap-3 p-5 border-b border-gray-100">
                     <div class="flex items-center gap-2.5">
@@ -98,6 +132,7 @@
                     </table>
                 </div>
             </div>
+            @endunless
 
             {{-- جدول الأقساط --}}
             @if ($contract->installments->isNotEmpty())
@@ -115,7 +150,8 @@
                     </div>
 
                     <div class="divide-y divide-gray-50">
-                        @foreach ($contract->installments as $installment)
+                        @foreach ($contract->installments->sortBy('due_date') as $installment)
+                            @php($status = $installment->status())
                             <div class="flex items-center gap-3 px-5 py-3">
                                 <span
                                     class="w-8 h-8 shrink-0 rounded-xl bg-gray-50 text-gray-500 flex items-center justify-center text-[12px] font-bold">
@@ -126,6 +162,7 @@
                                     {{ number_format((float) $installment->amount, 2) }}
                                     <span class="text-[10px] text-gray-400">ج.م</span>
                                 </span>
+                                <x-ui.badge :tone="$status['tone']" dot>{{ $status['label'] }}</x-ui.badge>
                             </div>
                         @endforeach
                     </div>
@@ -151,7 +188,9 @@
                         @foreach ($contract->maintenanceItems as $item)
                             <div class="flex items-center gap-3 px-5 py-3">
                                 <span class="flex-1 text-[13px] font-bold text-gray-800">{{ $item->product_name }}</span>
-                                <span class="text-[11px] text-gray-400">كل {{ $item->interval_months }} شهر</span>
+                                @if ($item->interval_months)
+                                    <span class="text-[11px] text-gray-400">كل {{ $item->interval_months }} شهر</span>
+                                @endif
                                 <span class="text-[12px] text-gray-600" dir="ltr">
                                     {{ $item->replacement_date->format('Y-m-d') }}</span>
                             </div>
@@ -168,7 +207,11 @@
 
                 <x-ui.detail-row label="السعر الأصلي" :value="number_format((float) $contract->subtotal) . ' ج.م'" />
                 <x-ui.detail-row label="الخصم" :value="number_format((float) $contract->discount) . ' ج.م'" />
-                <x-ui.detail-row label="السعر بعد الخصم" :value="number_format((float) $contract->total) . ' ج.م'" />
+                <x-ui.detail-row label="السعر بعد الخصم" :value="number_format($contract->priceAfterDiscount()) . ' ج.م'" />
+                @if ($contract->isInstallment())
+                    <x-ui.detail-row label="الفائدة" :value="number_format((float) $contract->interest) . ' ج.م'" />
+                    <x-ui.detail-row label="الإجمالي بالفائدة" :value="number_format((float) $contract->total) . ' ج.م'" />
+                @endif
                 <x-ui.detail-row label="المدفوع" :value="number_format((float) $contract->paid) . ' ج.م'" />
 
                 <div class="flex items-center justify-between gap-3 pt-3 mt-2 border-t border-gray-100">
@@ -196,18 +239,16 @@
                 </div>
             @endif
 
+            @unless ($contract->isMaintenance())
             <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <div class="flex items-center justify-between gap-3 mb-3">
-                    <h2 class="text-sm font-bold text-gray-800">أثر العقد على المخزون</h2>
-                    <a class="text-[11px] font-bold text-gray-400 hover:text-brand-dark"
-                        href="{{ route('inventory.movements.index') }}">السجل</a>
-                </div>
+                <h2 class="text-sm font-bold text-gray-800 mb-3">أثر العقد على المخزون</h2>
 
                 <p class="text-[12px] text-gray-500 leading-relaxed">
                     صُرفت بنود العقد من «{{ $contract->warehouse?->name }}» عبر حركات مخزون مرتبطة بالعقد،
                     وأي تعديل على الكميات يُسجَّل كحركة جديدة.
                 </p>
             </div>
+            @endunless
         </div>
     </div>
 @endsection

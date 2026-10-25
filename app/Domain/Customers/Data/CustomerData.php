@@ -2,6 +2,7 @@
 
 namespace App\Domain\Customers\Data;
 
+use App\Domain\Customers\Enums\CustomerOrigin;
 use App\Domain\Customers\Enums\CustomerStatus;
 
 /**
@@ -16,11 +17,12 @@ final readonly class CustomerData
         public string $registeredAt,
         public array $phones,
         public int $primaryPhoneIndex = 0,
-        public ?string $code = null,
+        public CustomerOrigin $origin = CustomerOrigin::Internal,
         public ?string $nationalId = null,
         public ?string $governorate = null,
         public ?string $center = null,
         public ?string $village = null,
+        public ?string $detailedAddress = null,
         public ?string $notes = null,
     ) {}
 
@@ -33,11 +35,12 @@ final readonly class CustomerData
             registeredAt: $validated['registered_at'],
             phones: array_values($validated['phones'] ?? []),
             primaryPhoneIndex: (int) ($validated['primary_phone'] ?? 0),
-            code: $validated['code'] ?? null,
+            origin: CustomerOrigin::from($validated['origin'] ?? CustomerOrigin::Internal->value),
             nationalId: $validated['national_id'] ?? null,
             governorate: $validated['governorate'] ?? null,
             center: $validated['center'] ?? null,
             village: $validated['village'] ?? null,
+            detailedAddress: $validated['detailed_address'] ?? null,
             notes: $validated['notes'] ?? null,
         );
     }

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Inventory\Services;
 
+use App\Domain\Inventory\Data\EmployeeHandoverData;
 use App\Domain\Inventory\Data\StockMovementData;
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Exceptions\InsufficientStockException;
@@ -9,6 +10,7 @@ use App\Domain\Inventory\Models\EmployeeStock;
 use App\Domain\Inventory\Models\EmployeeStockMovement;
 use App\Domain\Products\Models\Product;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -18,6 +20,26 @@ use Illuminate\Support\Facades\DB;
 class EmployeeStockService
 {
     public function __construct(private readonly StockService $stock) {}
+
+    /**
+     * يأخذ الموظف عهدة من مخزن رئيسي قد تضم أكثر من منتج — كل بند حركة تسليم مستقلة،
+     * لكن العملية بالكامل تُلغى معًا لو فشل أحد بنودها (نفاد رصيد أحد المنتجات مثلًا).
+     *
+     * @return Collection<int, EmployeeStockMovement>
+     */
+    public function handOverMany(EmployeeHandoverData $data): Collection
+    {
+        return DB::transaction(fn () => collect($data->items)->map(
+            fn ($item) => $this->handOver(
+                userId: $data->userId,
+                productId: $item->productId,
+                warehouseId: $data->warehouseId,
+                quantity: $item->quantity,
+                date: $data->movedAt,
+                note: $data->note,
+            ),
+        ));
+    }
 
     /** يأخذ الموظف كمية من مخزن رئيسي إلى ما يحمله شخصيًا */
     public function handOver(
@@ -83,6 +105,20 @@ class EmployeeStockService
             ->where('user_id', $userId)
             ->pluck('quantity', 'product_id')
             ->map(fn ($quantity) => (int) $quantity)
+            ->all();
+    }
+
+    /**
+     * عهدة كل الموظفين دفعة واحدة: [user_id => [product_id => quantity]].
+     *
+     * @return array<int, array<int, int>>
+     */
+    public function availabilityMatrix(): array
+    {
+        return EmployeeStock::query()
+            ->get(['user_id', 'product_id', 'quantity'])
+            ->groupBy('user_id')
+            ->map(fn ($balances) => $balances->pluck('quantity', 'product_id')->map(fn ($q) => (int) $q)->all())
             ->all();
     }
 

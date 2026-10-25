@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>سند قبض - العمراني للتجارة العامة</title>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Tajawal & Cairo for authentic Arabic typography -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&amp;family=Tajawal:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<!-- FontAwesome for agency icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<script data-purpose="tailwind-config">
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              orange: '#E85324',
+              orangeLight: '#FFF0EA',
+              dark: '#1F2428',
+              charcoal: '#111518'
+            }
+          },
+          fontFamily: {
+            cairo: ['Cairo', 'sans-serif'],
+            tajawal: ['Tajawal', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="typography">
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background-color: #ECECEC;
+      color: #1a1a1a;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-cairo {
+      font-family: 'Cairo', sans-serif;
+    }
+  </style>
+<style data-purpose="custom-receipt-layout">
+    /* Receipt background watermark subtle texture */
+    .receipt-paper {
+      background-color: #FFFFFF;
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15), 0 0 5px rgba(0,0,0,0.05);
+      position: relative;
+    }
+
+    /* Dotted line form inputs */
+    .dotted-input-field {
+      border: none;
+      border-bottom: 2px dotted #4b5563;
+      background: transparent;
+      outline: none;
+      box-shadow: none !important;
+      padding: 2px 8px;
+      font-weight: 600;
+      color: #111827;
+      transition: border-color 0.2s;
+    }
+    .dotted-input-field:focus {
+      border-bottom-color: #E85324;
+      background: rgba(232, 83, 36, 0.02);
+    }
+
+    /* Slanted geometric accents */
+    .clip-slanted-header-dark {
+      clip-path: polygon(0 0, 100% 0, 84% 100%, 0% 100%);
+    }
+    .clip-slanted-header-orange {
+      clip-path: polygon(15% 0, 100% 0, 88% 100%, 0% 100%);
+    }
+    .clip-slanted-footer-orange {
+      clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%);
+    }
+    .clip-slanted-footer-dark {
+      clip-path: polygon(12% 0, 100% 0, 95% 100%, 0% 100%);
+    }
+
+    /* Multi-striped parallel lines */
+    .parallel-triple-line {
+      height: 6px;
+      border-top: 1.5px solid #1f2937;
+      border-bottom: 1.5px solid #1f2937;
+      position: relative;
+    }
+    .parallel-triple-line::after {
+      content: "";
+      position: absolute;
+      top: 1px;
+      left: 0;
+      right: 0;
+      height: 1.5px;
+      background: #1f2937;
+    }
+  </style>
+<style data-purpose="print-styles">
+    @media print {
+      body {
+        background: transparent !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .receipt-paper {
+        box-shadow: none !important;
+        border: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 10mm 15mm !important;
+      }
+      .dotted-input-field {
+        border-bottom-style: dotted !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen py-6 px-3 flex flex-col items-center justify-start selection:bg-brand-orange selection:text-white">
+<!-- BEGIN: ControlToolbar -->
+<header class="no-print w-full max-w-5xl mb-5 flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200" data-purpose="action-bar">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-brand-orange text-white flex items-center justify-center font-bold text-lg">
+<i class="fa-solid fa-receipt"></i>
+</div>
+<div>
+<h1 class="text-base font-bold text-gray-800 leading-tight">دفتر سندات القبض الإلكتروني</h1>
+<p class="text-xs text-gray-500">العمراني للتجارة العامة - تصميم السند الأصلي</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<!-- Quick Fill Sample Data -->
+<button class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1.5" id="btn-fill-sample" title="تعبئة بيانات تجريبية" type="button">
+<i class="fa-solid fa-wand-magic-sparkles text-amber-600"></i>
+<span>بيانات تجريبية</span>
+</button>
+<!-- Clear Form -->
+<button class="px-3.5 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors flex items-center gap-1.5" id="btn-clear-fields" title="تفريغ الحقول" type="button">
+<i class="fa-solid fa-rotate-right"></i>
+<span>إفراغ الحقول</span>
+</button>
+<!-- Print Button -->
+<button class="px-4 py-2 text-xs font-bold text-white bg-brand-orange hover:bg-orange-600 rounded-lg shadow transition-all flex items-center gap-2" id="btn-print" type="button">
+<i class="fa-solid fa-print text-sm"></i>
+<span>طباعة السند</span>
+</button>
+</div>
+</header>
+<!-- END: ControlToolbar -->
+<!-- BEGIN: ReceiptDocumentWrapper -->
+<main class="w-full max-w-5xl">
+<div class="receipt-paper border border-gray-300 rounded-lg p-6 sm:p-8 md:p-10 relative overflow-hidden text-gray-900" id="receipt-container">
+<!-- BEGIN: HeaderSection -->
+<header class="relative mb-6">
+<!-- Top Angular Geometric Banner Ribbons -->
+<div class="flex items-stretch justify-between h-14 sm:h-16 mb-4 relative select-none">
+<!-- Left English Branding & Slogan Ribbon (Mirrored visually in RTL) -->
+<div class="w-1/2 flex flex-col justify-center pr-2">
+<h2 class="text-2xl sm:text-3xl font-black tracking-tight text-gray-950 font-cairo">AL-AMRANI</h2>
+<div class="flex items-center gap-2">
+<span class="text-xs sm:text-sm tracking-widest font-extrabold text-brand-orange uppercase">FOY GENQLM</span>
+<div class="h-0.5 flex-1 bg-gradient-to-r from-brand-orange to-transparent"></div>
+</div>
+<!-- Address & Phones in header -->
+<div class="flex items-center gap-2 text-[10px] sm:text-[11px] text-gray-700 font-bold mt-1 whitespace-nowrap">
+<span class="inline-flex items-center gap-1 text-brand-orange">
+<i class="fa-solid fa-location-dot"></i>
+<span class="text-gray-800 font-medium">رداع - الشارع العام - أمام مستشفى السلام</span>
+</span>
+<span class="inline-flex items-center gap-1 text-brand-orange mr-2">
+<i class="fa-solid fa-phone"></i>
+<span class="text-gray-800 font-medium font-sans">735420208 / 777357644 / 06/550345</span>
+</span>
+</div>
+</div>
+<!-- Middle Brand Calligraphic Shield Logo -->
+<div class="flex-shrink-0 flex items-center justify-center px-3" data-purpose="brand-logo-emblem">
+<div class="w-16 h-16 sm:w-20 sm:h-20 border-2 border-brand-orange rounded-xl flex flex-col items-center justify-center p-1 bg-white shadow-sm relative rotate-1 hover:rotate-0 transition-transform">
+<div class="w-full h-full border border-dashed border-gray-400 rounded-lg flex flex-col items-center justify-center bg-orange-50/40">
+<i class="fa-solid fa-building text-brand-orange text-lg sm:text-xl mb-0.5"></i>
+<span class="text-[9px] sm:text-[10px] font-black text-brand-orange leading-tight text-center font-cairo">العمراني</span>
+<span class="text-[7px] font-bold text-gray-600">للتجارة العامة</span>
+</div>
+</div>
+</div>
+<!-- Right Arabic Stylized Store Name in Dynamic Banner -->
+<div class="w-1/2 flex items-center justify-end relative">
+<div class="relative w-full flex justify-end">
+<!-- Slanted Orange and Dark Ribbons -->
+<div class="bg-brand-orange text-white py-2 px-5 clip-slanted-header-orange font-cairo font-black text-xl sm:text-3xl flex items-center gap-2 shadow-sm">
+<span>العمراني</span>
+<span class="text-xs sm:text-sm font-bold bg-black/30 px-2 py-0.5 rounded">للتجارة العامة</span>
+</div>
+<div class="hidden sm:block absolute -left-4 top-0 bottom-0 w-8 bg-brand-dark clip-slanted-header-dark opacity-90"></div>
+</div>
+</div>
+</div>
+<!-- Activity Sub-banner description -->
+<div class="text-center border-t border-b border-gray-200 py-1.5 bg-gray-50/80 rounded my-2">
+<p class="text-[11px] sm:text-xs font-bold text-gray-800">
+            لبيع مواد البناء والسباكة والكهرباء - ضغط عالي - منخفض - المستلزمات الصناعية - مستلزمات الورش - أسمنت - بلاط
+          </p>
+</div>
+<!-- Document Title Badge & Metadata (Number & Date) -->
+<div class="grid grid-cols-12 gap-3 items-center mt-3">
+<!-- Voucher Serial Number -->
+<div class="col-span-12 sm:col-span-4 flex items-center gap-2">
+<span class="text-sm font-black text-gray-800 whitespace-nowrap">الـرقـم :</span>
+<div class="relative flex-1">
+<input class="w-full text-center font-mono font-bold text-base text-red-600 bg-white border border-gray-300 rounded px-2 py-1 shadow-inner focus:border-brand-orange focus:ring-1 focus:ring-brand-orange" id="receipt_no" placeholder="0000" type="text" value="00482"/>
+<div class="parallel-triple-line mt-1"></div>
+</div>
+</div>
+<!-- Center Voucher Badge: سند قبض with Cash/Credit Options -->
+<div class="col-span-12 sm:col-span-4 flex flex-col items-center justify-center">
+<div class="bg-brand-orange text-white px-6 py-2 rounded-full shadow-md w-full max-w-xs text-center">
+<span class="text-xl sm:text-2xl font-black tracking-wide font-cairo block">سند قبض</span>
+<!-- Payment Method Checkboxes: نقداً / آجل -->
+<div class="flex items-center justify-center gap-6 mt-1 text-xs font-bold pt-1 border-t border-white/30">
+<label class="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-90">
+<input checked="" class="form-radio text-brand-dark focus:ring-0 w-3.5 h-3.5 text-black border-white bg-white" name="payment_mode" type="radio" value="cash"/>
+<span>نقداً</span>
+</label>
+<label class="inline-flex items-center gap-1.5 cursor-pointer hover:opacity-90">
+<input class="form-radio text-brand-dark focus:ring-0 w-3.5 h-3.5 text-black border-white bg-white" name="payment_mode" type="radio" value="credit"/>
+<span>آجل</span>
+</label>
+</div>
+</div>
+</div>
+<!-- Receipt Date -->
+<div class="col-span-12 sm:col-span-4 flex items-center justify-end gap-2">
+<span class="text-sm font-black text-gray-800 whitespace-nowrap">التاريخ :</span>
+<div class="flex items-center gap-1 bg-white border border-gray-300 rounded-md px-2 py-1 shadow-sm font-sans">
+<input class="w-7 text-center font-bold border-none p-0 focus:ring-0 text-sm" id="date_day" maxlength="2" placeholder="01" type="text" value="24"/>
+<span class="text-gray-400">/</span>
+<input class="w-7 text-center font-bold border-none p-0 focus:ring-0 text-sm" id="date_month" maxlength="2" placeholder="05" type="text" value="10"/>
+<span class="text-gray-400">/</span>
+<span class="text-sm font-bold text-gray-700">20</span>
+<input class="w-6 text-center font-bold border-none p-0 focus:ring-0 text-sm" id="date_year" maxlength="2" placeholder="24" type="text" value="24"/>
+<span class="text-xs font-bold text-gray-600 mr-1">م</span>
+</div>
+</div>
+</div>
+</header>
+<!-- END: HeaderSection -->
+<!-- BEGIN: VoucherBodyContent -->
+<section class="space-y-4 py-2 text-sm sm:text-base font-semibold" data-purpose="form-fields">
+<!-- Recipient Row & Top Pill Highlight -->
+<div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+<div class="flex items-center flex-1">
+<label class="w-24 font-bold text-gray-800" for="recipient_title">المحترم :</label>
+<input class="dotted-input-field flex-1 text-gray-900" id="recipient_title" placeholder="اسم العميل أو الجهة المحترمة ...................................." type="text" value="شركة الأمل للمقاولات العامة"/>
+</div>
+<!-- Numeric Amount Box Display -->
+<div class="flex items-center gap-2 bg-orange-50/70 border border-brand-orange/40 rounded-lg p-1.5 px-3">
+<span class="text-xs font-black text-brand-orange">المبلغ رقماً:</span>
+<input class="w-32 text-center font-bold text-base font-mono border border-gray-300 rounded bg-white px-2 py-0.5 text-gray-900 focus:ring-brand-orange focus:border-brand-orange" id="numeric_amount" placeholder="000,000" type="text" value="150,000"/>
+<span class="text-xs font-bold text-gray-600">ريال</span>
+</div>
+</div>
+<!-- Received From Row -->
+<div class="flex items-center">
+<label class="w-32 font-bold text-gray-800 whitespace-nowrap" for="received_from">أستلمت من الأخ /</label>
+<input class="dotted-input-field flex-1" id="received_from" placeholder="الاسم الثلاثي أو اسم المودع ...................................................................................." type="text" value="م. عبد الرحمن أحمد علي السعدي"/>
+</div>
+<!-- Sum of Amount (In Words) Row with "فقط لاغير" -->
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+<div class="flex items-center flex-1 w-full">
+<label class="w-32 font-bold text-gray-800 whitespace-nowrap" for="amount_in_words">مبلغ وقدره /</label>
+<input class="dotted-input-field flex-1 text-gray-900" id="amount_in_words" placeholder="المبلغ كتابة بالكلمات ...................................................................................." type="text" value="فقط مائة وخمسون ألف ريال يمني لا غير"/>
+</div>
+<div class="flex items-center pr-1 sm:pr-2">
+<span class="text-xs sm:text-sm font-black text-brand-orange bg-orange-100/60 px-3 py-1 rounded border border-orange-200">
+              فقط لا غير
+            </span>
+</div>
+</div>
+<!-- Reason / Against (وذلك مقابل) Row -->
+<div class="flex items-center">
+<label class="w-32 font-bold text-gray-800 whitespace-nowrap" for="for_reason">وذلك مقابل /</label>
+<input class="dotted-input-field flex-1" id="for_reason" placeholder="البيان، رقم الفاتورة أو نوع المواد المشتراة ...................................................................................." type="text" value="دفعة من قيمة مواد بناء، أسمنت وحديد تسليح بموجب فاتورة مبيعات رقم 892"/>
+</div>
+</section>
+<!-- END: VoucherBodyContent -->
+<!-- BEGIN: SignatureSection -->
+<section class="mt-8 pt-4" data-purpose="signatures">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm font-bold text-gray-800">
+<!-- Cashier Signature Column -->
+<div class="space-y-3 bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+<div class="flex items-center">
+<span class="w-28 text-gray-700">أمين الصندوق:</span>
+<input class="dotted-input-field flex-1" id="cashier_name" type="text" value="محمد صالح العمراني"/>
+</div>
+<div class="flex items-center">
+<span class="w-28 text-gray-700">التوقـيـع:</span>
+<input class="dotted-input-field flex-1 cursor-text" placeholder="............................................................" type="text"/>
+</div>
+</div>
+<!-- Receiver Signature Column -->
+<div class="space-y-3 bg-gray-50/50 p-3 rounded-lg border border-gray-100">
+<div class="flex items-center">
+<span class="w-28 text-gray-700">أسم المستلم:</span>
+<input class="dotted-input-field flex-1" id="receiver_name" type="text" value="عبد الرحمن أحمد السعدي"/>
+</div>
+<div class="flex items-center">
+<span class="w-28 text-gray-700">التوقـيـع:</span>
+<input class="dotted-input-field flex-1 cursor-text" placeholder="............................................................" type="text"/>
+</div>
+</div>
+</div>
+<!-- Decorative Bottom Angular Bars matching Receipt Pad Design -->
+<div class="mt-6 relative h-4 w-full overflow-hidden flex">
+<div class="w-1/3 bg-brand-orange h-2 clip-slanted-footer-orange self-end"></div>
+<div class="w-2/3 bg-brand-dark h-3 clip-slanted-footer-dark self-end"></div>
+</div>
+</section>
+<!-- END: SignatureSection -->
+<!-- BEGIN: PrintingAgencyFooter -->
+<footer class="mt-6 pt-3 border-t border-gray-300 text-gray-600 text-xs flex flex-wrap items-center justify-between gap-4" data-purpose="printer-branding">
+<!-- Right: Agency Brand & Title -->
+<div class="flex items-center gap-3">
+<!-- QR Code Badge Placeholder -->
+<div class="w-12 h-12 bg-white border border-gray-300 p-0.5 rounded shadow-xs flex items-center justify-center">
+<i class="fa-solid fa-qrcode text-3xl text-gray-800"></i>
+</div>
+<div>
+<div class="font-extrabold text-gray-900 text-sm flex items-center gap-1.5">
+<span>الخطابي للدعاية والإعلان</span>
+<span class="text-[10px] text-brand-orange font-normal font-sans">Al-Khattabi Printing</span>
+</div>
+<p class="text-[10px] text-gray-500">جودة بأعمال إحترافية - البيضاء - رداع - خلف مطاعم حرض الدولي</p>
+</div>
+</div>
+<!-- Center: Social handles & Contact -->
+<div class="flex flex-col items-center sm:items-start text-[11px] gap-1">
+<div class="flex items-center gap-2 text-gray-700 font-sans font-bold">
+<a class="text-green-600 hover:opacity-80" href="#"><i class="fa-brands fa-whatsapp text-sm"></i></a>
+<a class="text-red-600 hover:opacity-80" href="#"><i class="fa-brands fa-pinterest text-sm"></i></a>
+<a class="text-blue-600 hover:opacity-80" href="#"><i class="fa-brands fa-facebook text-sm"></i></a>
+<a class="text-pink-600 hover:opacity-80" href="#"><i class="fa-brands fa-instagram text-sm"></i></a>
+<span class="text-gray-500 text-[10px] font-normal">@alkhattabipress</span>
+</div>
+<div class="font-mono text-gray-800 font-bold tracking-wider text-[11px]">
+<span>730084600</span> - <span>711084600</span>
+</div>
+</div>
+<!-- Left: Email & Verification info -->
+<div class="text-[10px] text-gray-400 font-mono flex items-center gap-1">
+<i class="fa-regular fa-envelope"></i>
+<span>i.press@gmail.com</span>
+</div>
+</footer>
+<!-- END: PrintingAgencyFooter -->
+</div>
+</main>
+<!-- END: ReceiptDocumentWrapper -->
+<!-- BEGIN: InteractiveScripts -->
+<script data-purpose="form-interactivity">
+    document.addEventListener('DOMContentLoaded', () => {
+      const printBtn = document.getElementById('btn-print');
+      const clearBtn = document.getElementById('btn-clear-fields');
+      const sampleBtn = document.getElementById('btn-fill-sample');
+
+      // Print Receipt Action
+      printBtn?.addEventListener('click', () => {
+        window.print();
+      });
+
+      // Clear All Interactive Inputs
+      clearBtn?.addEventListener('click', () => {
+        const inputs = document.querySelectorAll('.receipt-paper input[type="text"]');
+        inputs.forEach(input => {
+          input.value = '';
+        });
+        const cashRadio = document.querySelector('input[name="payment_mode"][value="cash"]');
+        if (cashRadio) cashRadio.checked = true;
+      });
+
+      // Reset to Default Sample Data
+      sampleBtn?.addEventListener('click', () => {
+        document.getElementById('receipt_no').value = '00482';
+        document.getElementById('date_day').value = '24';
+        document.getElementById('date_month').value = '10';
+        document.getElementById('date_year').value = '24';
+        document.getElementById('recipient_title').value = 'شركة الأمل للمقاولات العامة';
+        document.getElementById('numeric_amount').value = '150,000';
+        document.getElementById('received_from').value = 'م. عبد الرحمن أحمد علي السعدي';
+        document.getElementById('amount_in_words').value = 'فقط مائة وخمسون ألف ريال يمني لا غير';
+        document.getElementById('for_reason').value = 'دفعة من قيمة مواد بناء، أسمنت وحديد تسليح بموجب فاتورة مبيعات رقم 892';
+        document.getElementById('cashier_name').value = 'محمد صالح العمراني';
+        document.getElementById('receiver_name').value = 'عبد الرحمن أحمد السعدي';
+      });
+    });
+  </script>
+<!-- END: InteractiveScripts -->
+</body></html>

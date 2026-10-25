@@ -6,12 +6,26 @@ enum CustomerStatus: string
 {
     case Active = 'active';
     case Inactive = 'inactive';
+    case Returned = 'returned';
+    case Legal = 'legal';
 
     public function label(): string
     {
         return match ($this) {
             self::Active => 'نشط',
             self::Inactive => 'غير نشط',
+            self::Returned => 'مرتجع',
+            self::Legal => 'شؤون قانونية',
+        };
+    }
+
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Active => 'green',
+            self::Inactive => 'gray',
+            self::Returned => 'amber',
+            self::Legal => 'red',
         };
     }
 

@@ -1,20 +1,19 @@
-{{-- بداية: ترويسة الهاتف --}}
-<header class="lg:hidden sticky top-0 z-30 bg-[#FAFAFA] px-5 pt-4 pb-3">
-    <div class="flex items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-            <span class="w-10 h-10 shrink-0 rounded-xl bg-brand-dark text-white flex items-center justify-center">
-                <x-icon class="w-[19px] h-[19px]" name="droplets" />
-            </span>
-            <div class="min-w-0">
-                <p class="text-[10px] text-gray-400 leading-tight">أكوا ووتر</p>
-                <h1 class="text-base font-bold text-gray-800 truncate leading-tight">@yield('page-title', 'لوحة التحكم')</h1>
-            </div>
+{{-- بداية: ترويسة الهاتف — جزيرة داكنة بنفس لغة شريط سطح المكتب --}}
+<header class="lg:hidden sticky top-0 z-30 px-3 pt-3 pb-2 bg-[#FAFAFA]/85 backdrop-blur-md">
+    <div class="m-island m-header">
+        <a class="m-logo" href="{{ route('home') }}" aria-label="أكوا ووتر — الرئيسية" wire:navigate>
+            <x-icon class="w-5 h-5" name="droplets" />
+        </a>
+
+        <div class="m-title">
+            <small>@yield('page-subtitle', 'أكوا ووتر')</small>
+            <strong>@yield('page-title', 'لوحة التحكم')</strong>
         </div>
 
-        <a class="w-10 h-10 shrink-0 rounded-xl brand-green flex items-center justify-center active:scale-90 transition-transform"
-            href="{{ route('contracts.create') }}" title="عقد جديد">
-            <x-icon class="w-[19px] h-[19px]" name="plus" />
-        </a>
+        <button class="m-icon-btn" type="button" aria-label="ابحث عن عميل"
+            x-data x-on:click="Alpine.$data(document.getElementById('bottomNav')).openMenu(true)">
+            <x-icon class="w-5 h-5" name="search" />
+        </button>
     </div>
 </header>
 {{-- نهاية: ترويسة الهاتف --}}

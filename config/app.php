@@ -15,6 +15,9 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    // رقم تليفون الشركة المطبوع على الإيصالات
+    'company_phone' => env('COMPANY_PHONE', '01100984920'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

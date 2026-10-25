@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Domain\Inventory\Exceptions\InsufficientStockException;
+use App\Domain\Inventory\Models\CustodySettlement;
 use App\Domain\Inventory\Models\EmployeeStock;
+use App\Domain\Inventory\Models\EmployeeStockMovement;
 use App\Domain\Inventory\Models\StockBalance;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\EmployeeStockService;
@@ -16,6 +18,10 @@ use Illuminate\Http\RedirectResponse;
 
 class EmployeeStockController extends Controller
 {
+    private const RECENT_SETTLEMENTS = 10;
+
+    private const MOVEMENTS_PER_PAGE = 20;
+
     public function __construct(private readonly EmployeeStockService $employeeStock) {}
 
     /** ما يحمله كل موظف من منتجات حاليًا */
@@ -33,11 +39,38 @@ class EmployeeStockController extends Controller
         ]);
     }
 
+    /** ملف عهدة موظف: أرصدته الحالية وتسوياته وسجل كل حركات عهدته */
+    public function show(User $user): View
+    {
+        return view('pages.inventory.employee-stocks.show', [
+            'employee' => $user,
+            'balances' => EmployeeStock::query()
+                ->with('product:id,name,sku')
+                ->where('user_id', $user->id)
+                ->where('quantity', '>', 0)
+                ->orderByDesc('quantity')
+                ->get(),
+            'settlements' => CustodySettlement::query()
+                ->where('user_id', $user->id)
+                ->with('items.product:id,name')
+                ->orderByDesc('settlement_date')
+                ->orderByDesc('id')
+                ->limit(self::RECENT_SETTLEMENTS)
+                ->get(),
+            'movements' => EmployeeStockMovement::query()
+                ->with('product:id,name')
+                ->where('user_id', $user->id)
+                ->orderByDesc('moved_at')
+                ->orderByDesc('id')
+                ->paginate(self::MOVEMENTS_PER_PAGE),
+        ]);
+    }
+
     public function create(): View
     {
         return view('pages.inventory.employee-stocks.create', [
             'employees' => User::query()
-                ->whereIn('role', ['مندوب مبيعات', 'فني تركيب'])
+                ->custodians()
                 ->orderBy('name')
                 ->pluck('name', 'id')
                 ->all(),
@@ -64,20 +97,13 @@ class EmployeeStockController extends Controller
     public function store(EmployeeHandoverRequest $request): RedirectResponse
     {
         try {
-            $this->employeeStock->handOver(
-                userId: (int) $request->validated('user_id'),
-                productId: (int) $request->validated('product_id'),
-                warehouseId: (int) $request->validated('warehouse_id'),
-                quantity: (int) $request->validated('quantity'),
-                date: $request->validated('moved_at'),
-                note: $request->validated('note'),
-            );
+            $this->employeeStock->handOverMany($request->toData());
         } catch (InsufficientStockException $exception) {
-            return back()->withInput()->withErrors(['quantity' => $exception->getMessage()]);
+            return back()->withInput()->withErrors(['items' => $exception->getMessage()]);
         }
 
         return redirect()
             ->route('inventory.employee-stocks.index')
-            ->with('success', 'تم تسليم البضاعة للموظف بنجاح.');
+            ->with('success', 'تم تسليم العهدة للموظف بنجاح.');
     }
 }

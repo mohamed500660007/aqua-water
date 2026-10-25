@@ -3,19 +3,23 @@
 namespace App\Domain\Maintenance\Models;
 
 use App\Domain\Maintenance\Enums\MaintenancePlanStatus;
+use App\Support\ArabicOrdinal;
 use Database\Factories\MaintenancePlanFactory;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * خطة الصيانة الوحيدة في النظام: سبع شمعات بمواعيد ثابتة تنطبق على كل الفلاتر ولا تُعدَّل.
+ * العقد المرتبط بها يأخذ نسخة من الشمعات بمواعيد = تاريخ تركيبه + دورية كل شمعة.
+ */
 class MaintenancePlan extends Model
 {
     /** @use HasFactory<MaintenancePlanFactory> */
     use HasFactory, SoftDeletes;
 
-    public const SORTABLE = ['name', 'status', 'created_at'];
+    /** موضع الشمعة => دوريتها بالأشهر */
+    public const CANDLE_INTERVALS = [1 => 1, 2 => 4, 3 => 6, 4 => 12, 5 => 12, 6 => 12, 7 => 12];
 
     protected static string $factory = MaintenancePlanFactory::class;
 
@@ -29,48 +33,25 @@ class MaintenancePlan extends Model
         ];
     }
 
-    public function items(): HasMany
+    /** الخطة الوحيدة — تُنشئها الـ migration، فلا تكون null إلا في قاعدة بيانات لم تُرحَّل بعد */
+    public static function current(): ?self
     {
-        return $this->hasMany(MaintenancePlanItem::class)->orderBy('replacement_date')->orderBy('id');
+        return static::query()->orderBy('id')->first();
     }
 
-    public function scopeSearch(Builder $query, ?string $term): void
+    /** «الشمعة الأولى» … «الشمعة السابعة» */
+    public static function candleLabel(int $position): string
     {
-        $term = trim((string) $term);
-
-        if ($term === '') {
-            return;
-        }
-
-        $query->where(function (Builder $query) use ($term) {
-            $query->where('name', 'like', "%{$term}%")
-                ->orWhere('description', 'like', "%{$term}%");
-        });
+        return 'الشمعة '.ArabicOrdinal::feminine($position);
     }
 
-    /** @param  array<string, string|null>  $filters */
-    public function scopeApplyFilters(Builder $query, array $filters): void
+    /** «كل شهر» / «كل 4 شهور» / «كل سنة» */
+    public static function intervalLabel(int $months): string
     {
-        $status = trim((string) ($filters['status'] ?? ''));
-
-        $query->when($status !== '', fn (Builder $query) => $query->where('status', $status));
-    }
-
-    public function scopeApplySort(Builder $query, ?string $column, ?string $direction): void
-    {
-        $column = in_array($column, self::SORTABLE, true) ? $column : 'created_at';
-        $direction = strtolower((string) $direction) === 'asc' ? 'asc' : 'desc';
-
-        $query->orderBy($column, $direction)->orderBy('id', 'desc');
-    }
-
-    /** خيارات القوائم المنسدلة: المعرّف => الاسم (الخطط المفعّلة فقط) */
-    public static function options(): array
-    {
-        return static::query()
-            ->where('status', MaintenancePlanStatus::Active)
-            ->orderBy('name')
-            ->pluck('name', 'id')
-            ->all();
+        return match (true) {
+            $months === 1 => 'كل شهر',
+            $months === 12 => 'كل سنة',
+            default => "كل {$months} شهور",
+        };
     }
 }

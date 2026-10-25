@@ -14,13 +14,13 @@
         'price' => (float) $product->price,
     ]);
 
-    $planItems = $plans->mapWithKeys(fn($plan) => [
-        (string) $plan->id => $plan->items->map(fn($item) => [
-            'product' => $item->product?->name ?? 'منتج محذوف',
-            'interval_months' => $item->interval_months,
-            'replacement_date' => $item->replacement_date->format('Y-m-d'),
-        ]),
-    ]);
+    // شمعات الخطة الثابتة للمعاينة؛ المواعيد الفعلية تُحسب من تاريخ التركيب عند الحفظ
+    $planCandles = collect(\App\Domain\Maintenance\Models\MaintenancePlan::CANDLE_INTERVALS)
+        ->map(fn($months, $position) => [
+            'label' => \App\Domain\Maintenance\Models\MaintenancePlan::candleLabel($position),
+            'interval' => \App\Domain\Maintenance\Models\MaintenancePlan::intervalLabel($months),
+        ])
+        ->values();
 
     // الكميات المحجوزة لهذا العقد تُضاف إلى المتاح أثناء التعديل
     $reserved = $contract
@@ -35,9 +35,17 @@
         'type' => old('type', $contract?->type?->value ?? 'cash'),
         'discount' => (float) old('discount', $contract?->discount ?? 0),
         'paid' => (float) old('paid', $contract?->paid ?? 0),
+        'interest' => (float) old('interest', $contract?->interest ?? 0),
+        // بعد تحصيل أي قسط تثبت الحسابات، فتُعرض للقراءة فقط
+        'locked' => (bool) $contract?->hasCollections(),
         'installmentsCount' => (int) old('installments_count', $contract?->installments_count ?? 6),
         'periodMonths' => (int) old('installment_period_months', $contract?->installment_period_months ?? 1),
-        'planId' => (string) old('maintenance_plan_id', $contract?->maintenance_plan_id ?? ''),
+        // العقد الجديد يدخل الخطة افتراضيًا؛ بعد خطأ تحقق تُحترم آخر قيمة اختارها المستخدم
+        'withPlan' => session()->hasOldInput()
+            ? filled(old('maintenance_plan_id'))
+            : (bool) ($contract ? $contract->maintenance_plan_id : $plan?->id),
+        'kind' => old('kind', $contract?->kind?->value ?? ($defaultKind ?? 'sale')),
+        'price' => (float) old('price', $contract?->isMaintenance() ? $contract->subtotal : 0),
     ];
 
     $stockSourceOptions = collect($stockSources)->map(fn($label, $value) => ['value' => $value, 'label' => $label])->values();
@@ -52,7 +60,7 @@
         warehouseNames: @js($warehouses),
         employeeNames: @js($salesReps + $installers),
         reserved: @js($reserved),
-        plans: @js($planItems),
+        planCandles: @js($planCandles),
         stockSources: @js($stockSourceOptions),
         defaults: @js($defaults),
     })"
@@ -84,6 +92,24 @@
                     <h2 class="text-sm font-bold text-gray-800">بيانات العقد</h2>
                 </div>
 
+                <div class="mb-4">
+                    <label class="block text-[12px] font-bold text-gray-600 mb-2">نوع التعاقد</label>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach ($kinds as $value => $label)
+                            <button class="h-10 px-4 rounded-xl text-[12px] font-bold border transition-colors"
+                                type="button"
+                                x-bind:class="kind === @js($value) ? 'border-brand-green bg-brand-green/20 text-brand-dark' :
+                                    'border-gray-200 text-gray-500 hover:bg-gray-50'"
+                                x-on:click="kind = @js($value)">{{ $label }}</button>
+                        @endforeach
+                    </div>
+                    <input name="kind" type="hidden" x-bind:value="kind" />
+                    <p class="text-[11px] text-gray-400 mt-1.5" x-cloak x-show="kind === 'maintenance'">
+                        عقد صيانة فقط بسعر ثابت (لعميل داخلي أو خارجي) — لا يصرف أجهزة من المخزن، ويُحصَّل نقدًا أو بالتقسيط
+                        مثل عقد البيع.
+                    </p>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <x-ui.field label="تاريخ العقد" name="contract_date" type="date"
                         :value="old('contract_date', $contract?->contract_date?->format('Y-m-d') ?? today()->toDateString())" required
@@ -92,11 +118,26 @@
                     <x-ui.field label="نوع العقد" name="type" type="select" :options="$types" :value="$defaults['type']"
                         placeholder="اختر النوع" required x-model="type" />
 
-                    <x-ui.field label="خطة الصيانة" name="maintenance_plan_id" type="select"
-                        :options="$plans->pluck('name', 'id')->all()" :value="$defaults['planId']" placeholder="بدون خطة صيانة"
-                        x-model="planId" />
+                    <x-ui.field label="تاريخ التركيب" name="installation_date" type="date"
+                        :value="old('installation_date', $contract?->installation_date?->format('Y-m-d'))"
+                        hint="مطلوب لعقود البيع فقط" />
 
-                    <x-ui.field label="ملاحظات" name="notes" type="textarea" rows="2"
+                    <x-ui.field label="تاريخ الصيانة" name="maintenance_date" type="date"
+                        :value="old('maintenance_date', $contract?->maintenance_date?->format('Y-m-d'))" required />
+
+                    <x-ui.field label="تاريخ التحصيل" name="collection_date" type="date"
+                        :value="old('collection_date', $contract?->collection_date?->format('Y-m-d'))" />
+
+                    @if ($plan)
+                        <label class="flex items-center gap-3 self-end h-11 px-3.5 rounded-xl border border-gray-200 cursor-pointer select-none">
+                            <input class="w-4 h-4 rounded" style="accent-color: #84CC16" name="maintenance_plan_id" type="checkbox"
+                                value="{{ $plan->id }}" x-model="withPlan" />
+                            <span class="text-[13px] font-bold text-gray-700">ضمن خطة الصيانة</span>
+                            <span class="text-[11px] text-gray-400">(7 شمعات)</span>
+                        </label>
+                    @endif
+
+                    <x-ui.field col="sm:col-span-2" label="ملاحظات" name="notes" type="textarea" rows="2"
                         placeholder="أي تفاصيل إضافية عن العقد..." :value="$contract?->notes" />
                 </div>
             </section>
@@ -127,7 +168,7 @@
                         :value="$defaults['warehouseId']" placeholder="اختر المخزن" required x-model="warehouseId" />
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-gray-50">
+                <div class="mt-4 pt-4 border-t border-gray-50" x-show="kind === 'sale'">
                     <label class="block text-[12px] font-bold text-gray-600 mb-2">تُصرف البضاعة من</label>
                     <div class="flex flex-wrap gap-2">
                         <template x-bind:key="source.value" x-for="source in stockSources">
@@ -156,20 +197,20 @@
 
                     <p class="text-[11px] text-amber-600 mt-1.5" x-cloak
                         x-show="stockSource === 'sales_rep' && salesRepId && employeeTotal(salesRepId) === 0">
-                        هذا المندوب لا يحمل أي بضاعة حاليًا — سلّمه بضاعة من صفحة «تسليم بضاعة لموظف» أولًا، أو اختر
+                        هذا المندوب لا يحمل أي عهدة حاليًا — سلّمه عهدة من صفحة «تسليم عهدة لموظف» أولًا، أو اختر
                         مصدرًا آخر.
                     </p>
                     <p class="text-[11px] text-amber-600 mt-1.5" x-cloak
                         x-show="stockSource === 'installer' && installerId && employeeTotal(installerId) === 0">
-                        هذا الفني لا يحمل أي بضاعة حاليًا — سلّمه بضاعة من صفحة «تسليم بضاعة لموظف» أولًا، أو اختر
+                        هذا الفني لا يحمل أي عهدة حاليًا — سلّمه عهدة من صفحة «تسليم عهدة لموظف» أولًا، أو اختر
                         مصدرًا آخر.
                     </p>
                 </div>
             </section>
 
             {{-- بنود العقد --}}
-            <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <div class="flex items-center justify-between gap-3 mb-4">
+            <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5" x-show="kind === 'sale'">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="flex items-center gap-2.5">
                         <span class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
                             <x-icon class="w-[18px] h-[18px]" name="package" />
@@ -280,27 +321,22 @@
 
             {{-- بنود خطة الصيانة المختارة --}}
             <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5" x-cloak
-                x-show="planItems.length">
+                x-show="withPlan && planCandles.length">
                 <div class="flex items-center gap-2.5 mb-4">
                     <span class="w-9 h-9 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center">
                         <x-icon class="w-[18px] h-[18px]" name="shield-check" />
                     </span>
                     <div>
-                        <h2 class="text-sm font-bold text-gray-800">بنود خطة الصيانة</h2>
-                        <p class="text-[11px] text-gray-400">تُحفظ نسخة ثابتة منها مع العقد ولا تتأثر بتعديل الخطة لاحقًا</p>
+                        <h2 class="text-sm font-bold text-gray-800">شمعات خطة الصيانة</h2>
+                        <p class="text-[11px] text-gray-400">المواعيد تُحسب من تاريخ التركيب، وتُحفظ نسخة ثابتة منها مع العقد</p>
                     </div>
                 </div>
 
                 <div class="space-y-2">
-                    <template x-bind:key="index" x-for="(item, index) in planItems">
+                    <template x-bind:key="index" x-for="(item, index) in planCandles">
                         <div class="flex items-center justify-between gap-3 p-3 rounded-2xl border border-gray-100">
-                            <span class="text-[13px] font-bold text-gray-800" x-text="item.product"></span>
-                            <div class="flex items-center gap-4 shrink-0">
-                                <span class="text-[11px] text-gray-400">
-                                    كل <span class="font-bold text-gray-600" x-text="item.interval_months"></span> شهر
-                                </span>
-                                <span class="text-[11px] text-gray-400" dir="ltr" x-text="item.replacement_date"></span>
-                            </div>
+                            <span class="text-[13px] font-bold text-gray-800" x-text="item.label"></span>
+                            <span class="shrink-0 text-[11.5px] font-bold text-gray-600" x-text="item.interval"></span>
                         </div>
                     </template>
                 </div>
@@ -312,7 +348,16 @@
             <section class="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 lg:sticky lg:top-2">
                 <h2 class="text-sm font-bold text-gray-800 mb-4">الملخص المالي</h2>
 
-                <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
+                <div class="py-3 border-b border-gray-50" x-cloak x-show="kind === 'maintenance'">
+                    <label class="block text-[12px] font-bold text-gray-600 mb-1.5">سعر عقد الصيانة (ج.م)</label>
+                    <input
+                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
+                        min="0" name="price" placeholder="0" step="0.01" type="number" x-model.number="price" />
+                    <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.price"
+                        x-text="errors.price"></p>
+                </div>
+
+                <div class="flex items-center justify-between py-2.5 border-b border-gray-50" x-show="kind === 'sale'">
                     <span class="text-[12px] text-gray-400">السعر الأصلي</span>
                     <span class="text-[13px] font-bold text-gray-800">
                         <span x-text="Number(subtotal).toLocaleString('en')"></span>
@@ -320,12 +365,16 @@
                     </span>
                 </div>
 
+                <div class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 mb-2 text-[11.5px] font-semibold text-amber-700" x-cloak x-show="locked">
+                    بدأ تحصيل أقساط هذا العقد — الحسابات (البنود والخصم والفائدة والمدفوع والأقساط) ثابتة ولا يمكن تعديلها.
+                </div>
+
                 <div class="py-3 border-b border-gray-50">
                     <label class="block text-[12px] font-bold text-gray-600 mb-1.5">الخصم (ج.م)</label>
                     <input
-                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
+                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
                         min="0" name="discount" placeholder="0" step="0.01" type="number"
-                        x-model.number="discount" />
+                        x-bind:readonly="locked" x-model.number="discount" />
                     <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.discount"
                         x-text="errors.discount"></p>
                 </div>
@@ -333,21 +382,23 @@
                 <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
                     <span class="text-[12px] text-gray-400">السعر بعد الخصم</span>
                     <span class="text-[13px] font-bold text-gray-800">
-                        <span x-text="Number(total).toLocaleString('en')"></span>
+                        <span x-text="Number(priceAfterDiscount).toLocaleString('en')"></span>
                         <span class="text-[10px] text-gray-400">ج.م</span>
                     </span>
                 </div>
 
                 <div class="py-3 border-b border-gray-50">
-                    <label class="block text-[12px] font-bold text-gray-600 mb-1.5">المدفوع مقدمًا (ج.م)</label>
+                    <label class="block text-[12px] font-bold text-gray-600 mb-1.5"
+                        x-text="locked ? 'المدفوع حتى الآن (ج.م)' : (type === 'installment' ? 'المقدم (ج.م)' : 'المدفوع (ج.م)')"></label>
                     <input
-                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition"
-                        min="0" name="paid" placeholder="0" step="0.01" type="number" x-model.number="paid" />
+                        class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
+                        min="0" name="paid" placeholder="0" step="0.01" type="number"
+                        x-bind:readonly="locked" x-model.number="paid" x-on:input="syncInterestRate()" />
                     <p class="text-[11px] font-semibold text-red-500 mt-1.5" x-cloak x-show="errors.paid"
                         x-text="errors.paid"></p>
                 </div>
 
-                <div class="flex items-center justify-between py-3">
+                <div class="flex items-center justify-between py-3" x-show="type !== 'installment'">
                     <span class="text-[12px] text-gray-400">المتبقي</span>
                     <span class="text-base font-bold text-gray-800">
                         <span x-text="Number(remaining).toLocaleString('en')"></span>
@@ -356,13 +407,59 @@
                 </div>
 
                 {{-- بيانات التقسيط --}}
-                <div class="space-y-3 pt-3 border-t border-gray-100" x-cloak x-show="type === 'installment'">
+                <div class="space-y-3 pt-1" x-cloak x-show="type === 'installment'">
+                    <div class="flex items-center justify-between py-2.5 border-b border-gray-50" x-show="!locked">
+                        <span class="text-[12px] text-gray-400">المتبقي بعد المقدم</span>
+                        <span class="text-[13px] font-bold text-gray-800">
+                            <span x-text="Number(financed).toLocaleString('en')"></span>
+                            <span class="text-[10px] text-gray-400">ج.م</span>
+                        </span>
+                    </div>
+
+                    {{-- الفائدة تُكتب مبلغًا أو نسبة من المتبقي بعد المقدم، والمبلغ وحده هو ما يُحفظ --}}
+                    <div class="pb-3 border-b border-gray-50">
+                        <label class="block text-[12px] font-bold text-gray-600 mb-1.5">الفائدة</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <div class="col-span-2 relative">
+                                <input
+                                    class="w-full h-11 pl-7 pr-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
+                                    aria-label="نسبة الفائدة" max="1000" min="0" placeholder="0" step="0.01" type="number"
+                                    x-bind:readonly="locked" x-model.number="interestRate" x-on:input="applyInterestRate()" />
+                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] font-bold text-gray-400">%</span>
+                            </div>
+                            <div class="col-span-3 relative">
+                                <input
+                                    class="w-full h-11 pl-10 pr-3 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 focus:border-brand-green outline-none transition read-only:bg-gray-50 read-only:text-gray-500"
+                                    aria-label="قيمة الفائدة" min="0" name="interest" placeholder="0" step="0.01" type="number"
+                                    x-bind:readonly="locked" x-model.number="interest" x-on:input="syncInterestRate()" />
+                                <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">ج.م</span>
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-gray-400 mt-1.5">تُضاف على المتبقي بعد المقدم وتُقسَّم على الأقساط.</p>
+                    </div>
+
+                    <div class="flex items-center justify-between py-2.5 border-b border-gray-50">
+                        <span class="text-[12px] text-gray-400">إجمالي العقد بالفائدة</span>
+                        <span class="text-[13px] font-bold text-gray-800">
+                            <span x-text="Number(total).toLocaleString('en')"></span>
+                            <span class="text-[10px] text-gray-400">ج.م</span>
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between py-2.5">
+                        <span class="text-[12px] font-bold text-gray-600">المتبقي للتقسيط</span>
+                        <span class="text-base font-bold text-gray-800">
+                            <span x-text="Number(remaining).toLocaleString('en')"></span>
+                            <span class="text-[10px] text-gray-400">ج.م</span>
+                        </span>
+                    </div>
+
                     <div>
                         <label class="block text-[12px] font-bold text-gray-600 mb-1.5">عدد الأقساط</label>
                         <input
                             class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 outline-none transition"
                             max="120" min="1" name="installments_count" type="number"
-                            x-model.number="installmentsCount" />
+                            x-bind:readonly="locked" x-model.number="installmentsCount" />
                     </div>
 
                     <div>
@@ -370,14 +467,14 @@
                         <input
                             class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 outline-none transition"
                             max="12" min="1" name="installment_period_months" type="number"
-                            x-model.number="periodMonths" />
+                            x-bind:readonly="locked" x-model.number="periodMonths" />
                     </div>
 
                     <div>
                         <label class="block text-[12px] font-bold text-gray-600 mb-1.5">تاريخ أول استحقاق</label>
                         <input
                             class="w-full h-11 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] text-gray-800 focus:ring-2 focus:ring-brand-green/50 outline-none transition"
-                            name="first_due_date" type="date" x-model="firstDueDate" />
+                            name="first_due_date" type="date" x-bind:readonly="locked" x-model="firstDueDate" />
                     </div>
 
                     {{-- المبلغ المستحق دوريًا --}}
@@ -428,7 +525,7 @@
                 warehouseNames: config.warehouseNames || {},
                 employeeNames: config.employeeNames || {},
                 reserved: config.reserved || {},
-                plans: config.plans || {},
+                planCandles: config.planCandles || [],
                 stockSources: config.stockSources || [],
 
                 items: config.items.length ? config.items.map(toRow) : [blankRow()],
@@ -440,10 +537,19 @@
                 contractDate: @js(old('contract_date', $contract?->contract_date?->format('Y-m-d') ?? today()->toDateString())),
                 discount: config.defaults.discount,
                 paid: config.defaults.paid,
+                interest: config.defaults.interest,
+                interestRate: 0,
+                locked: config.defaults.locked,
                 installmentsCount: config.defaults.installmentsCount,
                 periodMonths: config.defaults.periodMonths,
                 firstDueDate: @js(old('first_due_date', $contract?->first_due_date?->format('Y-m-d') ?? today()->addMonth()->toDateString())),
-                planId: config.defaults.planId,
+                withPlan: config.defaults.withPlan,
+                kind: config.defaults.kind,
+                price: config.defaults.price,
+
+                init() {
+                    this.syncInterestRate();
+                },
 
                 product(row) {
                     return this.products.find(p => p.id === row.product_id) || null;
@@ -491,15 +597,39 @@
                 },
 
                 get subtotal() {
+                    if (this.kind === 'maintenance') return round(this.price);
+
                     return round(this.items.reduce((sum, row) => sum + this.lineTotal(row), 0));
                 },
 
-                get total() {
+                get priceAfterDiscount() {
                     return round(Math.max(0, this.subtotal - (Number(this.discount) || 0)));
+                },
+
+                // الفائدة تخص التقسيط وحده — نفس قاعدة الخادم
+                get interestAmount() {
+                    return this.type === 'installment' ? round(Math.max(0, Number(this.interest) || 0)) : 0;
+                },
+
+                get total() {
+                    return round(this.priceAfterDiscount + this.interestAmount);
+                },
+
+                // المبلغ المموَّل بالتقسيط قبل الفائدة: السعر بعد الخصم ناقص المقدم
+                get financed() {
+                    return round(Math.max(0, this.priceAfterDiscount - (Number(this.paid) || 0)));
                 },
 
                 get remaining() {
                     return round(Math.max(0, this.total - (Number(this.paid) || 0)));
+                },
+
+                applyInterestRate() {
+                    this.interest = round(this.financed * (Number(this.interestRate) || 0) / 100);
+                },
+
+                syncInterestRate() {
+                    this.interestRate = this.financed > 0 ? round((Number(this.interest) || 0) * 100 / this.financed) : 0;
                 },
 
                 get installmentAmount() {
@@ -520,10 +650,6 @@
                     date.setMonth(date.getMonth() + (count - 1) * (Number(this.periodMonths) || 1));
 
                     return date.toISOString().slice(0, 10);
-                },
-
-                get planItems() {
-                    return this.plans[this.planId] || [];
                 },
 
                 addItem() {
@@ -558,24 +684,31 @@
                 },
 
                 validateAll() {
+                    const isSale = this.kind === 'sale';
+
                     this.errors = {
-                        items: this.items.length ? '' : 'يجب إضافة بند واحد على الأقل للعقد.',
+                        items: !isSale || this.items.length ? '' : 'يجب إضافة بند واحد على الأقل للعقد.',
+                        price: isSale || (Number(this.price) || 0) > 0 ? '' : 'اكتب سعر عقد الصيانة.',
                         discount: (Number(this.discount) || 0) > this.subtotal ? 'الخصم لا يمكن أن يتجاوز إجمالي البنود.' : '',
                         paid: (Number(this.paid) || 0) > this.total ? 'المبلغ المدفوع لا يمكن أن يتجاوز إجمالي العقد.' : '',
                         stockSource: ''
                     };
 
-                    if (this.stockSource === 'sales_rep' && !this.salesRepId) {
+                    // العقد المثبَّت يتحقق منه الخادم: المدفوع فيه يشمل الأقساط المحصّلة
+                    if (this.locked) {
+                        this.errors.paid = '';
+                    } else if (!this.errors.paid && this.type === 'installment' && this.financed <= 0) {
+                        this.errors.paid = 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد بعد المقدم.';
+                    }
+
+                    if (isSale && this.stockSource === 'sales_rep' && !this.salesRepId) {
                         this.errors.stockSource = 'يجب اختيار مندوب المبيعات لأن مصدر البضاعة منه.';
-                    } else if (this.stockSource === 'installer' && !this.installerId) {
+                    } else if (isSale && this.stockSource === 'installer' && !this.installerId) {
                         this.errors.stockSource = 'يجب اختيار فني التركيب لأن مصدر البضاعة منه.';
                     }
 
-                    if (!this.errors.paid && this.type === 'installment' && this.remaining <= 0) {
-                        this.errors.paid = 'لا يمكن إنشاء عقد تقسيط بدون مبلغ متبقٍّ للسداد.';
-                    }
-
-                    const rowsValid = this.items.map(row => this.validateRow(row)).every(Boolean);
+                    // بنود البيع المخفية في عقد الصيانة لا تُرسل للحفظ، فلا داعي للتحقق منها
+                    const rowsValid = !isSale || this.items.map(row => this.validateRow(row)).every(Boolean);
 
                     return rowsValid && Object.values(this.errors).every(message => !message);
                 }

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\Customers;
 
+use App\Domain\Customers\Enums\CustomerOrigin;
 use App\Domain\Customers\Enums\CustomerStatus;
 use App\Domain\Customers\Models\Customer;
+use App\Domain\Customers\Services\CustomerReport;
 use App\Domain\Customers\Services\CustomerService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Customers\CustomerReportRequest;
 use App\Http\Requests\Customers\CustomerRequest;
 use App\Support\Lookups;
 use Illuminate\Contracts\View\View;
@@ -23,15 +26,16 @@ class CustomerController extends Controller
         $customers = Customer::query()
             ->with('primaryPhone')
             ->withCount('phones')
+            // تاريخ تركيب أحدث جهاز للعميل — استعلام فرعي واحد بدل تحميل كل عقوده
+            ->withMax('contracts as installed_at', 'installation_date')
             ->search($request->input('q'))
-            ->applyFilters($request->only(['status', 'governorate', 'center', 'village']))
+            ->applyFilters($request->only(['status', 'origin', 'governorate', 'center', 'village']))
             ->applySort($request->input('sort'), $request->input('dir'))
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         return view('pages.customers.index', [
             'customers' => $customers,
-            'stats' => $this->stats(),
         ] + $this->lookups());
     }
 
@@ -56,6 +60,12 @@ class CustomerController extends Controller
         ]);
     }
 
+    /** لوحة جانبية بكل تفاصيل العميل — تُطلب عند الفتح فقط حتى لا تُحمَّل مع كل صف في القائمة */
+    public function panel(Customer $customer): View
+    {
+        return view('pages.customers.panel', ['customer' => $customer->loadProfile()]);
+    }
+
     public function edit(Customer $customer): View
     {
         return view('pages.customers.edit', [
@@ -72,28 +82,36 @@ class CustomerController extends Controller
             ->with('success', 'تم حفظ تعديلات العميل بنجاح.');
     }
 
-    public function destroy(Customer $customer): RedirectResponse
+    public function report(CustomerReportRequest $request, CustomerReport $report): View
     {
-        $this->customers->delete($customer);
+        $period = $request->period();
+        $content = $request->content();
+        $customers = Customer::query()
+            ->search($request->validated('q'))
+            ->applyFilters($request->filters());
 
-        return redirect()
-            ->route('customers.index')
-            ->with('success', "تم حذف العميل «{$customer->name}».");
-    }
+        // الأجزاء غير المطلوبة للطباعة لا تُحسب أصلًا
+        $withSummary = $content !== 'list';
+        $rows = $content !== 'summary'
+            ? $report->rows($customers, $period, $request->validated('sort'), $request->validated('dir'))
+            : collect();
 
-    /** أعداد العملاء حسب الحالة في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $counts = Customer::query()
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        return [
-            'total' => (int) $counts->sum(),
-            'active' => (int) $counts->get(CustomerStatus::Active->value, 0),
-            'inactive' => (int) $counts->get(CustomerStatus::Inactive->value, 0),
-        ];
+        return view('pages.customers.report', [
+            'period' => $period,
+            'content' => $content,
+            'summary' => $report->summary($customers, $period),
+            'activity' => $withSummary ? $report->activity($customers, $period) : null,
+            'governorates' => $withSummary ? $report->byGovernorate($customers) : collect(),
+            'rows' => $rows->take(CustomerReport::MAX_ROWS),
+            'truncated' => $rows->count() > CustomerReport::MAX_ROWS,
+            'search' => $request->validated('q'),
+            'filters' => $request->filters(),
+            'listQuery' => $request->listQuery(),
+            'contents' => CustomerReportRequest::CONTENTS,
+            'sorts' => CustomerReportRequest::SORTS,
+            // «governorates» في التقرير هو توزيع العملاء، فقائمة المحافظات للفلتر باسم مستقل
+            'governoratesList' => collect(Lookups::governorates())->merge(Customer::usedValuesOf('governorate'))->unique()->values()->all(),
+        ] + $this->lookups());
     }
 
     /** القوائم التي تحتاجها الواجهة للفلترة وللنموذج */
@@ -101,6 +119,7 @@ class CustomerController extends Controller
     {
         return [
             'statuses' => CustomerStatus::options(),
+            'origins' => CustomerOrigin::options(),
             'defaultStatus' => CustomerStatus::Active->value,
             'governorates' => Lookups::governorates(),
             'centers' => Customer::usedValuesOf('center'),

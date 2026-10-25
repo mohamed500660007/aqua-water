@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers\Users;
 
+use App\Domain\Users\Enums\Gender;
+use App\Domain\Users\Enums\MaritalStatus;
+use App\Domain\Users\Enums\MilitaryStatus;
 use App\Domain\Users\Enums\UserStatus;
 use App\Domain\Users\Models\User;
+use App\Domain\Users\Services\UserReport;
 use App\Domain\Users\Services\UserService;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\UserReportRequest;
 use App\Http\Requests\Users\UserRequest;
 use App\Support\Lookups;
+use App\Support\NationalId;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,14 +28,44 @@ class UserController extends Controller
     {
         $users = User::query()
             ->search($request->input('q'))
-            ->applyFilters($request->only(['status', 'role', 'department', 'branch']))
+            ->applyFilters($request->only(['status', 'department']))
             ->applySort($request->input('sort'), $request->input('dir'))
             ->paginate(self::PER_PAGE)
             ->withQueryString();
 
         return view('pages.users.index', [
             'users' => $users,
-            'stats' => $this->stats(),
+        ] + $this->lookups());
+    }
+
+    public function report(UserReportRequest $request, UserReport $report): View
+    {
+        $content = $request->content();
+        $users = User::query()
+            ->search($request->validated('q'))
+            ->applyFilters($request->filters());
+
+        // الأجزاء غير المطلوبة للطباعة لا تُحسب أصلًا
+        $withSummary = $content !== 'list';
+        $rows = $content !== 'summary'
+            ? $report->rows($users, $request->validated('sort'), $request->validated('dir'))
+            : collect();
+
+        return view('pages.users.report', [
+            'period' => $request->period(),
+            'content' => $content,
+            'summary' => $report->summary($users, $request->period()),
+            'byDepartment' => $withSummary ? $report->groupedBy($users, 'department') : collect(),
+            'byRole' => $withSummary ? $report->groupedBy($users, 'role') : collect(),
+            'byBranch' => $withSummary ? $report->groupedBy($users, 'branch') : collect(),
+            'alerts' => $withSummary ? $report->alerts($users) : collect(),
+            'rows' => $rows->take(UserReport::MAX_ROWS),
+            'truncated' => $rows->count() > UserReport::MAX_ROWS,
+            'search' => $request->validated('q'),
+            'filters' => $request->filters(),
+            'listQuery' => $request->listQuery(),
+            'contents' => UserReportRequest::CONTENTS,
+            'sorts' => UserReportRequest::SORTS,
         ] + $this->lookups());
     }
 
@@ -75,22 +111,6 @@ class UserController extends Controller
             ->with('success', "تم حذف حساب «{$user->name}».");
     }
 
-    /** أعداد المستخدمين حسب الحالة في استعلام تجميعي واحد */
-    private function stats(): array
-    {
-        $counts = User::query()
-            ->selectRaw('status, COUNT(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        return [
-            'total' => (int) $counts->sum(),
-            'active' => (int) $counts->get(UserStatus::Active->value, 0),
-            'on_leave' => (int) $counts->get(UserStatus::OnLeave->value, 0),
-            'suspended' => (int) $counts->get(UserStatus::Suspended->value, 0),
-        ];
-    }
-
     /** قوائم الأدوار والأقسام والفروع المستخدمة في الفلترة وفي نموذج المستخدم */
     private function lookups(): array
     {
@@ -100,6 +120,13 @@ class UserController extends Controller
             'roles' => Lookups::roles(),
             'departments' => Lookups::departments(),
             'branches' => Lookups::branches(),
+            'genders' => Gender::options(),
+            'maritalStatuses' => MaritalStatus::options(),
+            'militaryStatuses' => MilitaryStatus::options(),
+            'religions' => Lookups::religions(),
+            'qualifications' => Lookups::qualifications(),
+            'relations' => Lookups::relations(),
+            'egyptGovernorates' => NationalId::governorates(),
         ];
     }
 }

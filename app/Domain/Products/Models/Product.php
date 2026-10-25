@@ -2,8 +2,12 @@
 
 namespace App\Domain\Products\Models;
 
+use App\Domain\Inventory\Models\EmployeeStock;
 use App\Domain\Inventory\Models\StockBalance;
+use App\Domain\Inventory\Models\StockMovement;
+use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Enums\ProductStatus;
+use App\Domain\Sales\Models\SalesContractItem;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +28,7 @@ class Product extends Model
         'sku',
         'name',
         'category',
+        'kind',
         'price',
         'cost',
         'warranty',
@@ -36,12 +41,28 @@ class Product extends Model
             'price' => 'decimal:2',
             'cost' => 'decimal:2',
             'status' => ProductStatus::class,
+            'kind' => ProductKind::class,
         ];
     }
 
     public function stockBalances(): HasMany
     {
         return $this->hasMany(StockBalance::class);
+    }
+
+    public function employeeStocks(): HasMany
+    {
+        return $this->hasMany(EmployeeStock::class);
+    }
+
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    public function contractItems(): HasMany
+    {
+        return $this->hasMany(SalesContractItem::class);
     }
 
     public function scopeSearch(Builder $query, ?string $term): void
@@ -61,11 +82,23 @@ class Product extends Model
     /** @param  array<string, string|null>  $filters */
     public function scopeApplyFilters(Builder $query, array $filters): void
     {
-        foreach (['category', 'status'] as $column) {
+        foreach (['category', 'kind', 'status'] as $column) {
             $value = trim((string) ($filters[$column] ?? ''));
 
             $query->when($value !== '', fn (Builder $query) => $query->where($column, $value));
         }
+
+        // in: له رصيد في المخازن (أو في مخزن بعينه إن حُدّد) — out: نفد منها
+        $warehouseId = $filters['warehouse_id'] ?? null;
+        $hasStock = fn (Builder $balances) => $balances
+            ->where('quantity', '>', 0)
+            ->when($warehouseId, fn (Builder $balances) => $balances->where('warehouse_id', $warehouseId));
+
+        match ($filters['stock'] ?? null) {
+            'in' => $query->whereHas('stockBalances', $hasStock),
+            'out' => $query->whereDoesntHave('stockBalances', $hasStock),
+            default => null,
+        };
     }
 
     public function scopeApplySort(Builder $query, ?string $column, ?string $direction): void

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Products\Data;
 
+use App\Domain\Products\Enums\ProductKind;
 use App\Domain\Products\Enums\ProductStatus;
 
 /**
@@ -14,6 +15,7 @@ final readonly class ProductData
         public string $name,
         public float $price,
         public ProductStatus $status,
+        public ProductKind $kind = ProductKind::Other,
         public ?string $category = null,
         public ?float $cost = null,
         public ?string $warranty = null,
@@ -27,6 +29,7 @@ final readonly class ProductData
             name: $validated['name'],
             price: (float) $validated['price'],
             status: ProductStatus::from($validated['status']),
+            kind: ProductKind::from($validated['kind'] ?? ProductKind::Other->value),
             category: $validated['category'] ?? null,
             cost: isset($validated['cost']) ? (float) $validated['cost'] : null,
             warranty: $validated['warranty'] ?? null,

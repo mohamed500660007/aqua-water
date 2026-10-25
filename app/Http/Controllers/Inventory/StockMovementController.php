@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Inventory;
 use App\Domain\Inventory\Enums\StockMovementType;
 use App\Domain\Inventory\Exceptions\InsufficientStockException;
 use App\Domain\Inventory\Models\StockBalance;
-use App\Domain\Inventory\Models\StockMovement;
 use App\Domain\Inventory\Models\Warehouse;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Products\Models\Product;
@@ -17,31 +16,17 @@ use Illuminate\Http\Request;
 
 class StockMovementController extends Controller
 {
-    private const PER_PAGE = 15;
-
     public function __construct(private readonly StockService $stock) {}
 
-    public function index(Request $request): View
+    public function create(Request $request): View
     {
-        $movements = StockMovement::query()
-            ->with(['product:id,name,sku', 'warehouse:id,name'])
-            ->applyFilters($request->only(['product_id', 'warehouse_id', 'type']))
-            ->orderByDesc('moved_at')
-            ->orderByDesc('id')
-            ->paginate(self::PER_PAGE)
-            ->withQueryString();
-
-        return view('pages.inventory.movements', [
-            'movements' => $movements,
+        return view('pages.inventory.add-stock', [
             'products' => Product::query()->orderBy('name')->pluck('name', 'id')->all(),
             'warehouses' => Warehouse::options(),
             'types' => StockMovementType::options(),
+            'availability' => $this->availabilityMatrix(),
+            'selectedProductId' => $request->integer('product_id') ?: null,
         ]);
-    }
-
-    public function create(): View
-    {
-        return view('pages.inventory.create-movement', $this->formOptions());
     }
 
     public function store(StockMovementRequest $request): RedirectResponse
@@ -53,18 +38,8 @@ class StockMovementController extends Controller
         }
 
         return redirect()
-            ->route('inventory.movements.index')
+            ->route('products.show', $movement->product_id)
             ->with('success', "تم تسجيل حركة {$movement->type->label()} بنجاح — الرصيد الحالي {$movement->balance_after}.");
-    }
-
-    private function formOptions(): array
-    {
-        return [
-            'products' => Product::query()->orderBy('name')->get(['id', 'sku', 'name']),
-            'warehouses' => Warehouse::options(),
-            'types' => StockMovementType::options(),
-            'availability' => $this->availabilityMatrix(),
-        ];
     }
 
     /**

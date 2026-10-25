@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Inventory;
 
+use App\Domain\Inventory\Data\EmployeeHandoverData;
 use App\Domain\Inventory\Services\StockService;
+use App\Domain\Users\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -14,13 +16,15 @@ class EmployeeHandoverRequest extends FormRequest
         return [
             'user_id' => [
                 'required',
-                Rule::exists('users', 'id')->whereIn('role', ['مندوب مبيعات', 'فني تركيب'])->whereNull('deleted_at'),
+                Rule::exists('users', 'id')->whereIn('role', User::CUSTODY_ROLES)->whereNull('deleted_at'),
             ],
-            'product_id' => ['required', Rule::exists('products', 'id')->whereNull('deleted_at')],
             'warehouse_id' => ['required', Rule::exists('warehouses', 'id')->where('is_active', true)],
-            'quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
             'moved_at' => ['required', 'date', 'before_or_equal:today'],
             'note' => ['nullable', 'string', 'max:255'],
+
+            'items' => ['required', 'array', 'min:1', 'max:50'],
+            'items.*.product_id' => ['required', 'distinct', Rule::exists('products', 'id')->whereNull('deleted_at')],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:1000000'],
         ];
     }
 
@@ -33,21 +37,37 @@ class EmployeeHandoverRequest extends FormRequest
                     return;
                 }
 
-                $available = app(StockService::class)->available(
-                    (int) $this->input('product_id'),
-                    (int) $this->input('warehouse_id'),
-                );
+                $stock = app(StockService::class);
+                $warehouseId = (int) $this->input('warehouse_id');
 
-                if ((int) $this->input('quantity') > $available) {
-                    $validator->errors()->add('quantity', "الكمية المتاحة في هذا المخزن {$available} فقط.");
+                foreach ($this->input('items', []) as $index => $item) {
+                    $available = $stock->available((int) $item['product_id'], $warehouseId);
+
+                    if ((int) $item['quantity'] > $available) {
+                        $validator->errors()->add(
+                            "items.{$index}.quantity",
+                            "الكمية المتاحة في هذا المخزن {$available} فقط.",
+                        );
+                    }
                 }
             },
         ];
     }
 
+    public function toData(): EmployeeHandoverData
+    {
+        return EmployeeHandoverData::fromArray($this->validated());
+    }
+
     protected function prepareForValidation(): void
     {
+        $items = collect($this->input('items', []))
+            ->filter(fn ($item) => is_array($item) && filled($item['product_id'] ?? null))
+            ->values()
+            ->all();
+
         $this->merge([
+            'items' => $items,
             'moved_at' => $this->input('moved_at') ?: now()->toDateString(),
             'note' => trim((string) $this->input('note')) ?: null,
         ]);
@@ -57,11 +77,12 @@ class EmployeeHandoverRequest extends FormRequest
     {
         return [
             'user_id' => 'الموظف',
-            'product_id' => 'المنتج',
             'warehouse_id' => 'المخزن',
-            'quantity' => 'الكمية',
             'moved_at' => 'التاريخ',
             'note' => 'الملاحظة',
+            'items' => 'بنود العهدة',
+            'items.*.product_id' => 'المنتج',
+            'items.*.quantity' => 'الكمية',
         ];
     }
 
@@ -70,6 +91,10 @@ class EmployeeHandoverRequest extends FormRequest
         return [
             'user_id.exists' => 'الموظف المختار غير موجود أو ليس مندوب مبيعات أو فني تركيب.',
             'moved_at.before_or_equal' => 'التاريخ لا يمكن أن يكون في المستقبل.',
+            'items.required' => 'يجب إضافة منتج واحد على الأقل للعهدة.',
+            'items.min' => 'يجب إضافة منتج واحد على الأقل للعهدة.',
+            'items.*.product_id.distinct' => 'لا يمكن تكرار نفس المنتج داخل عملية التسليم.',
+            'items.*.quantity.min' => 'الكمية يجب ألا تقل عن 1.',
         ];
     }
 }

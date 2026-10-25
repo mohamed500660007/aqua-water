@@ -36,16 +36,21 @@
             <x-ui.field label="التصنيف" name="category" placeholder="مثال: فلاتر منزلية" :value="$product?->category"
                 list="categoryOptions" />
 
+            <x-ui.field label="نوع المنتج" name="kind" type="select" :options="$kinds"
+                :value="$product?->kind?->value ?? 'other'" hint="يحدد كيف يظهر المنتج في التقارير: أجهزة مركّبة أو شمع" required />
+
             <x-ui.field label="سعر البيع (ج.م)" name="price" type="number" min="0" step="0.01" placeholder="0"
                 :value="$product?->price" client-error="errors.price" required x-on:blur="check($el)" x-on:input="check($el)" />
 
             <x-ui.field label="سعر التكلفة (ج.م)" name="cost" type="number" min="0" step="0.01" placeholder="0"
                 :value="$product?->cost" client-error="errors.cost" x-on:blur="check($el)" x-on:input="check($el)" />
 
-            <x-ui.field label="الضمان" name="warranty" placeholder="مثال: سنتان" :value="$product?->warranty" />
+            @if ($product)
+                <x-ui.field label="الضمان" name="warranty" placeholder="مثال: سنتان" :value="$product->warranty" />
 
-            <x-ui.field label="الحالة" name="status" type="select" :options="$statuses"
-                :value="$product?->status?->value ?? $defaultStatus" placeholder="اختر الحالة" required />
+                <x-ui.field label="الحالة" name="status" type="select" :options="$statuses"
+                    :value="$product->status->value" placeholder="اختر الحالة" required />
+            @endif
         </div>
 
         <datalist id="categoryOptions">

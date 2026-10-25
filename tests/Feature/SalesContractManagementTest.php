@@ -10,12 +10,15 @@ use App\Domain\Inventory\Services\EmployeeStockService;
 use App\Domain\Inventory\Services\StockService;
 use App\Domain\Maintenance\Models\MaintenancePlan;
 use App\Domain\Products\Models\Product;
+use App\Domain\Sales\Data\CollectInstallmentData;
 use App\Domain\Sales\Enums\ContractType;
 use App\Domain\Sales\Enums\StockSource;
 use App\Domain\Sales\Models\SalesContract;
+use App\Domain\Sales\Services\SalesContractService;
 use App\Domain\Users\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class SalesContractManagementTest extends TestCase
@@ -68,6 +71,8 @@ class SalesContractManagementTest extends TestCase
             'customer_id' => $this->customer->id,
             'warehouse_id' => $this->warehouse->id,
             'contract_date' => '2026-08-01',
+            'installation_date' => '2026-08-02',
+            'maintenance_date' => '2026-09-01',
             'type' => ContractType::Cash->value,
             'notes' => 'تركيب خلال 48 ساعة',
             'items' => [
@@ -171,6 +176,71 @@ class SalesContractManagementTest extends TestCase
 
         // مجموع الأقساط يساوي المتبقي تمامًا رغم التقريب
         $this->assertSame(7600.0, round($installments->sum(fn ($i) => (float) $i->amount), 2));
+    }
+
+    public function test_installment_interest_is_added_to_the_total_and_split_across_installments(): void
+    {
+        // 10,400 − خصم 400 = 10,000 ، مقدم 2,400 → متبقٍّ 7,600 + فائدة 1,400 = 9,000 على 6 أقساط
+        $this->post(route('contracts.store'), $this->installmentPayload(['interest' => 1400]))
+            ->assertSessionHasNoErrors();
+
+        $contract = SalesContract::sole();
+
+        $this->assertSame('1400.00', $contract->interest);
+        $this->assertSame('11400.00', $contract->total);
+        $this->assertSame('2400.00', $contract->paid);
+        $this->assertSame('9000.00', $contract->remaining);
+        $this->assertSame('1500.00', $contract->installment_amount);
+        $this->assertSame(10000.0, $contract->priceAfterDiscount());
+        $this->assertSame(9000.0, round($contract->installments->sum(fn ($i) => (float) $i->amount), 2));
+
+        $this->get(route('contracts.show', $contract))->assertOk()->assertSee('الفائدة')->assertSee('11,400');
+        $this->get(route('contracts.panel', $contract))->assertOk()->assertSee('فائدة التقسيط');
+    }
+
+    public function test_cash_contracts_carry_no_interest(): void
+    {
+        $this->post(route('contracts.store'), $this->validPayload(['interest' => 500]))->assertSessionHasNoErrors();
+
+        $contract = SalesContract::sole();
+
+        $this->assertSame('0.00', $contract->interest);
+        $this->assertSame('10000.00', $contract->total);
+    }
+
+    public function test_interest_alone_cannot_create_an_installment_balance(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload(['paid' => 10000, 'interest' => 500]))
+            ->assertSessionHasErrors('paid');
+
+        $this->assertDatabaseCount('sales_contracts', 0);
+    }
+
+    public function test_financial_terms_are_locked_once_an_installment_is_collected(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload(['interest' => 1400]));
+        $contract = SalesContract::sole();
+
+        app(SalesContractService::class)->collectInstallment(
+            $contract->installments->first(),
+            new CollectInstallmentData(amount: 1500, paidAt: '2026-09-01'),
+        );
+        $contract->refresh();
+
+        // المدفوع الآن يشمل القسط المحصّل
+        $unchanged = $this->installmentPayload(['interest' => 1400, 'paid' => 3900, 'notes' => 'ملاحظة جديدة']);
+
+        $this->put(route('contracts.update', $contract), ['interest' => 2000] + $unchanged)
+            ->assertSessionHasErrors('paid');
+
+        $this->put(route('contracts.update', $contract), $unchanged)->assertSessionHasNoErrors();
+
+        $contract->refresh();
+        $this->assertSame('ملاحظة جديدة', $contract->notes);
+        $this->assertSame('7500.00', $contract->remaining);
+        $this->assertSame('1500.00', $contract->installment_amount);
+        $this->assertCount(6, $contract->installments);
+        $this->get(route('contracts.edit', $contract))->assertOk()->assertSee('بدأ تحصيل أقساط هذا العقد');
     }
 
     public function test_installment_periods_longer_than_a_month_are_supported(): void
@@ -333,24 +403,44 @@ class SalesContractManagementTest extends TestCase
         $this->assertDatabaseCount('sales_contracts', 0);
     }
 
-    public function test_it_snapshots_the_maintenance_plan_items(): void
+    public function test_it_snapshots_the_seven_plan_candles_dated_from_the_installation_date(): void
     {
-        $plan = MaintenancePlan::factory()
-            ->withItems([['product_id' => $this->filter->id, 'interval_months' => 3, 'replacement_date' => '2026-11-01']])
-            ->create(['name' => 'باقة سنوية']);
+        $plan = MaintenancePlan::current();
 
-        $this->post(route('contracts.store'), $this->validPayload(['maintenance_plan_id' => $plan->id]));
+        $this->post(route('contracts.store'), $this->validPayload([
+            'maintenance_plan_id' => $plan->id,
+            'contract_date' => '2026-01-31',
+            'installation_date' => '2026-01-31',
+        ]))->assertSessionHasNoErrors();
 
         $contract = SalesContract::sole();
 
-        $this->assertCount(1, $contract->maintenanceItems);
-        $this->assertSame('شمعة قطنية', $contract->maintenanceItems->first()->product_name);
+        // الأولى بعد شهر، الثانية بعد 4، الثالثة بعد 6، ومن الرابعة للسابعة بعد سنة — بلا تجاوز لنهاية الشهر
+        $this->assertSame(
+            [
+                ['الشمعة الأولى', '2026-02-28'], ['الشمعة الثانية', '2026-05-31'], ['الشمعة الثالثة', '2026-07-31'],
+                ['الشمعة الرابعة', '2027-01-31'], ['الشمعة الخامسة', '2027-01-31'], ['الشمعة السادسة', '2027-01-31'],
+                ['الشمعة السابعة', '2027-01-31'],
+            ],
+            $contract->maintenanceItems->map(fn ($item) => [$item->product_name, $item->replacement_date->format('Y-m-d')])->all(),
+        );
+        // الشمع ينطبق على كل الفلاتر — لا منتج مرتبط بالشمعة
+        $this->assertNull($contract->maintenanceItems->first()->product_id);
 
-        // تعديل الخطة لاحقًا لا يمس نسخة العقد
-        $plan->items()->update(['interval_months' => 12]);
-        $plan->update(['name' => 'باقة معدّلة']);
+        // تصحيح تاريخ التركيب يعيد حساب المواعيد
+        $this->put(route('contracts.update', $contract), $this->validPayload([
+            'maintenance_plan_id' => $plan->id,
+            'contract_date' => '2026-01-31',
+            'installation_date' => '2026-03-10',
+        ]))->assertSessionHasNoErrors();
+        $this->assertSame('2026-04-10', $contract->fresh()->maintenanceItems->first()->replacement_date->format('Y-m-d'));
 
-        $this->assertSame(3, $contract->fresh()->maintenanceItems->first()->interval_months);
+        // إلغاء الخطة من العقد يحذف شمعاته
+        $this->put(route('contracts.update', $contract), $this->validPayload([
+            'contract_date' => '2026-01-31',
+            'installation_date' => '2026-03-10',
+        ]))->assertSessionHasNoErrors();
+        $this->assertCount(0, $contract->fresh()->maintenanceItems);
     }
 
     public function test_updating_a_contract_adjusts_stock_by_the_difference(): void
@@ -398,17 +488,19 @@ class SalesContractManagementTest extends TestCase
         $this->assertSame(0, $this->available($this->device));
     }
 
-    public function test_deleting_a_contract_returns_the_stock(): void
+    public function test_contracts_cannot_be_deleted(): void
     {
         $this->post(route('contracts.store'), $this->validPayload());
         $contract = SalesContract::sole();
 
-        $this->delete(route('contracts.destroy', $contract))
-            ->assertRedirect(route('contracts.index'));
+        $this->assertFalse(Route::has('contracts.destroy'));
+        $this->delete('/dashboard/contracts/'.$contract->id)->assertStatus(405);
+        $this->assertNotSoftDeleted($contract);
+        $this->assertSame(8, $this->available($this->device));
 
-        $this->assertSoftDeleted($contract);
-        $this->assertSame(10, $this->available($this->device));
-        $this->assertSame(50, $this->available($this->filter));
+        foreach ([route('contracts.index'), route('contracts.show', $contract)] as $url) {
+            $this->get($url)->assertOk()->assertDontSee('name="_method" value="DELETE"', false);
+        }
     }
 
     public function test_contract_pages_render(): void
@@ -498,29 +590,6 @@ class SalesContractManagementTest extends TestCase
         $this->assertDatabaseCount('sales_contracts', 0);
         // رصيد المندوب لم يُمس رغم رفض العملية
         $this->assertSame(1, app(EmployeeStockService::class)->available($salesRep->id, $this->device->id));
-    }
-
-    public function test_deleting_an_employee_sourced_contract_returns_stock_to_the_employee(): void
-    {
-        $salesRep = User::factory()->create(['role' => 'مندوب مبيعات']);
-        app(EmployeeStockService::class)->handOver($salesRep->id, $this->device->id, $this->warehouse->id, 5, today()->toDateString());
-
-        $this->post(route('contracts.store'), $this->validPayload([
-            'sales_rep_id' => $salesRep->id,
-            'stock_source' => StockSource::SalesRep->value,
-            'items' => [['product_id' => $this->device->id, 'quantity' => 2]],
-            'discount' => 0,
-            'paid' => 0,
-        ]));
-
-        $contract = SalesContract::sole();
-
-        $this->delete(route('contracts.destroy', $contract))->assertRedirect(route('contracts.index'));
-
-        $this->assertSoftDeleted($contract);
-        $this->assertSame(5, app(EmployeeStockService::class)->available($salesRep->id, $this->device->id));
-        // المخزن لم يتأثر طوال العملية — فقدت 5 وحدات عند تسليمها للمندوب فقط
-        $this->assertSame(5, $this->available($this->device));
     }
 
     public function test_updating_moves_stock_correctly_when_the_source_changes_from_warehouse_to_employee(): void
@@ -613,5 +682,183 @@ class SalesContractManagementTest extends TestCase
             1,
             $this->get(route('contracts.index', ['customer_id' => $this->customer->id]))->viewData('contracts')->items(),
         );
+    }
+
+    public function test_index_shows_the_table_directly_without_summary_cards(): void
+    {
+        $this->post(route('contracts.store'), $this->validPayload());
+
+        $this->get(route('contracts.index'))
+            ->assertOk()
+            ->assertViewMissing('contractsCount')
+            ->assertDontSee('عدد العقود')
+            ->assertSee(SalesContract::sole()->code)
+            ->assertSee(route('contracts.report'), false);
+    }
+
+    public function test_report_summarises_the_filtered_contracts_in_the_period(): void
+    {
+        $this->post(route('contracts.store'), $this->validPayload());
+        $other = Customer::factory()->create(['name' => 'شركة النيل']);
+        $this->post(route('contracts.store'), $this->installmentPayload([
+            'customer_id' => $other->id,
+            'items' => [['product_id' => $this->filter->id, 'quantity' => 2]],
+            'discount' => 0,
+            'paid' => 50,
+        ]));
+
+        $period = ['from' => now()->subYear()->toDateString(), 'to' => now()->addYear()->toDateString()];
+
+        $all = $this->get(route('contracts.report', $period))->assertOk()->assertSee('size: A4 portrait', false);
+        $this->assertSame(2, $all->viewData('summary')['totals']['contracts']);
+        $this->assertCount(2, $all->viewData('rows'));
+
+        $installments = $this->get(route('contracts.report', $period + ['type' => ContractType::Installment->value]))
+            ->assertOk()
+            ->assertSee('شركة النيل');
+        $this->assertSame(1, $installments->viewData('summary')['totals']['contracts']);
+        $this->assertSame(2, (int) $installments->viewData('products')->sole()->quantity);
+
+        $outside = $this->get(route('contracts.report', ['from' => '2000-01-01', 'to' => '2000-01-31']))->assertOk();
+        $this->assertSame(0, $outside->viewData('summary')['totals']['contracts']);
+    }
+
+    public function test_report_query_count_does_not_grow_with_the_contracts(): void
+    {
+        foreach (range(1, 4) as $i) {
+            $this->post(route('contracts.store'), $this->validPayload());
+        }
+
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
+
+        $this->get(route('contracts.report', ['from' => now()->subYear()->toDateString(), 'to' => now()->addYear()->toDateString()]))->assertOk();
+
+        $this->assertLessThanOrEqual(10, $queries);
+    }
+
+    public function test_contract_report_filters_by_payment_and_sales_rep_and_limits_content(): void
+    {
+        $period = ['from' => now()->subYear()->toDateString(), 'to' => now()->addYear()->toDateString()];
+        $this->post(route('contracts.store'), $this->validPayload());
+        $this->post(route('contracts.store'), $this->installmentPayload());
+        $cash = SalesContract::query()->where('type', ContractType::Cash->value)->sole();
+        $cash->update(['paid' => $cash->total, 'remaining' => 0]);
+
+        $page = $this->get(route('contracts.report', $period))->assertOk();
+        foreach (['name="kind"', 'name="type"', 'name="customer_id"', 'name="sales_rep_id"', 'name="installer_id"', 'name="payment"', 'name="legal"', 'name="content"', 'name="sort"'] as $field) {
+            $page->assertSee($field, false);
+        }
+
+        $open = $this->get(route('contracts.report', $period + ['payment' => 'open']))->assertOk();
+        $this->assertSame(1, $open->viewData('summary')['totals']['contracts']);
+        $this->assertSame(ContractType::Installment, $open->viewData('rows')->sole()->type);
+
+        $settled = $this->get(route('contracts.report', $period + ['payment' => 'settled']))->assertOk();
+        $this->assertSame(ContractType::Cash, $settled->viewData('rows')->sole()->type);
+
+        $byRep = $this->get(route('contracts.report', $period + ['sales_rep_id' => 999999]))->assertOk();
+        $this->assertSame(0, $byRep->viewData('summary')['totals']['contracts']);
+
+        $this->get(route('contracts.report', $period + ['content' => 'summary']))
+            ->assertOk()->assertDontSee('rpt-section-title">كشف العقود', false);
+    }
+
+    public function test_view_action_opens_the_contract_preview_panel(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload());
+        $contract = SalesContract::sole();
+
+        $this->get(route('contracts.index'))
+            ->assertOk()
+            ->assertSee(str_replace('/', '\/', route('contracts.panel', $contract)), false);
+
+        $this->get(route('contracts.panel', $contract))
+            ->assertOk()
+            ->assertDontSee('<html', false)
+            ->assertSee($contract->code)
+            ->assertSee($this->customer->name)
+            ->assertSeeInOrder(['نظرة عامة', 'البنود', 'الأقساط', 'الصيانة', 'الشكاوى'])
+            ->assertSee(route('contracts.edit', $contract), false);
+    }
+
+    public function test_cash_contract_preview_hides_the_installments_tab(): void
+    {
+        $this->post(route('contracts.store'), $this->validPayload());
+
+        $this->get(route('contracts.panel', SalesContract::sole()))
+            ->assertOk()
+            ->assertDontSee("tab = 'installments'", false);
+    }
+
+    public function test_contract_preview_query_count_is_constant(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload());
+        $contract = SalesContract::sole();
+
+        $queries = 0;
+        DB::listen(function () use (&$queries) {
+            $queries++;
+        });
+
+        $this->get(route('contracts.panel', $contract))->assertOk();
+
+        $this->assertLessThanOrEqual(16, $queries);
+    }
+
+    public function test_receipt_prints_the_full_customer_address_and_opens_as_a_document(): void
+    {
+        $this->customer->update([
+            'governorate' => 'الدقهلية', 'center' => 'المنصورة', 'village' => 'ميت مزاح', 'detailed_address' => 'شارع المدرسة بجوار المسجد',
+        ]);
+        $this->post(route('contracts.store'), $this->installmentPayload());
+        $installment = SalesContract::sole()->installments()->first();
+        $installment->update(['paid_at' => today(), 'paid_amount' => $installment->amount]);
+
+        $this->get(route('installments.receipt', $installment))
+            ->assertOk()
+            ->assertSeeInOrder(['المحافظة', 'الدقهلية', 'المركز', 'المنصورة', 'القرية', 'ميت مزاح'])
+            ->assertSee('شارع المدرسة بجوار المسجد')
+            // رقم القسط ترتيبي فقط (بلا «من» العدد الكلي)، ويوم التحصيل الشهري، ورقم تليفون الشركة مطبوع، ولا يظهر رقم العقد
+            ->assertSee('<td>الأول</td>', false)
+            ->assertDontSee('الأول من')
+            ->assertSeeInOrder(['يوم التحصيل', 'يوم', (string) $installment->due_date->day, 'شهريًا'])
+            ->assertSee('01100984920')
+            ->assertDontSee('رقم العقد')
+            ->assertSee('data-navigate-track="reload"', false);
+
+        // رابط الإيصال يفتح تحميلًا كاملًا في تبويب جديد، لا تنقّل SPA يُفقده تنسيقه
+        $html = $this->get(route('installments.index'))->assertOk()->getContent();
+        $receiptLink = preg_quote(route('installments.receipt', $installment), '/');
+        $this->assertMatchesRegularExpression('/<a[^>]*href="'.$receiptLink.'"[^>]*target="_blank"/', $html);
+        $this->assertDoesNotMatchRegularExpression('/<a[^>]*href="'.$receiptLink.'"[^>]*wire:navigate/', $html);
+    }
+
+    public function test_every_receipt_prints_the_same_fixed_late_fee_terms(): void
+    {
+        $terms = 'في حالة تأخير القسط للشهر التالي تُضاف 50 جنيه — في حالة التأخير ليوم آخر إضافة 10 جنيه';
+        $this->post(route('contracts.store'), $this->installmentPayload(['first_due_date' => today()->toDateString()]));
+        $installment = SalesContract::sole()->installments()->first();
+
+        // الشرط ثابت في دفتر إيصالات الشهر وفي إيصال القسط المحصَّل، ولا توجد خانة لتعديله
+        $this->get(route('installments.print', ['from' => today()->startOfMonth()->toDateString(), 'to' => today()->endOfMonth()->toDateString()]))
+            ->assertOk()->assertSee($terms);
+
+        $installment->update(['paid_at' => today(), 'paid_amount' => $installment->amount]);
+        $this->get(route('installments.receipt', $installment))->assertOk()->assertSee($terms);
+        $this->get(route('installments.index'))->assertOk()->assertDontSee('name="receipt_note"', false);
+    }
+
+    public function test_the_collection_form_keeps_an_existing_receipt_note(): void
+    {
+        $this->post(route('contracts.store'), $this->installmentPayload());
+        $installment = SalesContract::sole()->installments()->first();
+        $installment->update(['note' => 'ملاحظة مكتوبة قبل التحصيل']);
+
+        $this->get(route('installments.index'))
+            ->assertOk()
+            ->assertSee('value="ملاحظة مكتوبة قبل التحصيل"', false);
     }
 }

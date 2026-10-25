@@ -16,20 +16,17 @@
         x-transition:leave-end="opacity-0 translate-y-8 sm:translate-y-0 sm:scale-95"
         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100">
 
-        <span class="w-14 h-14 rounded-3xl bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
-            <x-icon class="w-6 h-6" name="triangle-alert" />
-        </span>
+        <div class="ui-confirm-art" aria-hidden="true">
+            <span class="ui-confirm-icon"><x-icon class="w-6 h-6" name="triangle-alert" /></span>
+        </div>
 
-        <h3 class="text-base font-bold text-gray-800 text-center mb-2" x-text="$store.confirm.title"></h3>
+        <h3 class="text-base font-extrabold text-gray-900 text-center mb-2" x-text="$store.confirm.title"></h3>
         <p class="text-[13px] text-gray-500 text-center leading-relaxed mb-6" x-text="$store.confirm.message"></p>
 
         <div class="flex gap-3">
-            <button
-                class="flex-1 h-11 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-700 hover:bg-gray-50 active:scale-95 transition-all"
-                type="button" x-on:click="$store.confirm.close()">إلغاء</button>
-            <button
-                class="flex-1 h-11 rounded-xl bg-red-500 text-white text-[13px] font-bold hover:bg-red-600 active:scale-95 transition-all"
-                type="button" x-on:click="$store.confirm.accept()" x-text="$store.confirm.label"></button>
+            <button class="ui-btn ui-btn-soft ui-btn-md flex-1" type="button" x-on:click="$store.confirm.close()">إلغاء</button>
+            <button class="ui-btn ui-btn-danger-solid ui-btn-md flex-1" type="button" x-on:click="$store.confirm.accept()"
+                x-text="$store.confirm.label"></button>
         </div>
     </div>
 </div>
