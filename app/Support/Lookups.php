@@ -39,6 +39,15 @@ class Lookups
                 ],
             ],
             [
+                'label' => 'الإدارة والتقارير',
+                'icon' => 'clipboard-list',
+                'tagline' => 'الصورة الكاملة للشركة: المالية والمبيعات والمخزون والفريق.',
+                'action' => ['route' => 'reports.executive', 'label' => 'الملخص التنفيذي', 'icon' => 'gauge'],
+                'items' => [
+                    ['route' => 'reports.index', 'icon' => 'clipboard-list', 'label' => 'ملف التقارير', 'tone' => 'purple', 'hint' => 'كل تقارير الشركة في مكان واحد'],
+                ],
+            ],
+            [
                 'label' => 'الصيانة والفريق',
                 'icon' => 'sparkles',
                 'tagline' => 'خدمة ما بعد البيع وكل ما يخص فريق العمل.',
