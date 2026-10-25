@@ -4,6 +4,10 @@ set -e
 : "${PORT:=8080}"
 sed "s|\${PORT}|${PORT}|g" /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
+if [ -n "${RENDER_EXTERNAL_HOSTNAME:-}" ] && [ -z "${APP_URL:-}" ]; then
+    export APP_URL="https://${RENDER_EXTERNAL_HOSTNAME}"
+fi
+
 php artisan migrate --force --no-interaction
 
 # Migrations run as root during container startup, while PHP-FPM handles

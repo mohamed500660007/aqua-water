@@ -15,10 +15,10 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts
 # ---- Runtime ----------------------------------------------------------------
 FROM php:8.3-fpm-alpine AS app
 
-RUN apk add --no-cache nginx supervisor libpng libjpeg-turbo freetype libzip \
-    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev \
+RUN apk add --no-cache nginx supervisor libpng libjpeg-turbo freetype libzip libpq \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS libpng-dev libjpeg-turbo-dev freetype-dev libzip-dev postgresql-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" pdo_mysql bcmath opcache gd zip \
+    && docker-php-ext-install -j"$(nproc)" pdo_mysql pdo_pgsql bcmath opcache gd zip \
     && apk del .build-deps
 
 WORKDIR /var/www/html
